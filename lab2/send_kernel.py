@@ -16,13 +16,13 @@ def readline():
 
 def recv_and_print():
     print(readline().decode())
-    # sleep(1)
+    sleep(1)
 
 
 device = '/dev/ttys005' if len(argv) == 1 else argv[1]
 print("[+]", device)
 baud_rate = 115200
-data = open('kernel.img', 'rb', buffering=0).read()
+data = open('/home/arthur/Documents/osc2024/lab2/kernel/kernel.img', 'rb', buffering=0).read()
 size = len(data)
 
 '''Start sending'''

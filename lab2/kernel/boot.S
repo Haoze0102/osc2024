@@ -4,6 +4,10 @@
 
 // x0 register stores address to dtb
 _start:
+
+    ldr		x1, =_dtb_ptr	//put _dtb_ptr into register1
+	str		x0, [x1]		//store dtb address from x0 to _dtb_ptr
+    
     // clear bss
     ldr     x20, =_bss_start
     ldr     x21, =_bss_size
@@ -25,3 +29,7 @@ _start:
 5:
     // for failsafe, halt this core too
     b       5b
+
+.global _dtb_ptr	//define a global variable _dtb_ptr
+.section .data		//_dtb_ptr is in data section
+_dtb_ptr: .dc.a 0x0	//it defines _dtb_ptr to be a 8-byte constant with a value of 0x0

@@ -27,6 +27,5 @@ void bootloader_main(char* x0) {
     _dtb = x0;  // store x0
     uart_init();
     load_kernel();
-    ((void (*)())_kernel_start)();
     ((void (*)(char*))_kernel_start)(_dtb);
 }

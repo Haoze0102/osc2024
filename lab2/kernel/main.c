@@ -1,19 +1,9 @@
 // #include "shell.h"
 #include "dtb.h"
 #include "stdint.h"
-// #include "uart.h"
 
-// void kernel_main() {
-//     // initialize UART for Raspi3
-//     uart_init();
-
-//     register uint64_t x0 asm("x0");
-//     dtb_init(x0);
-
-//     shell();
-// }
-
+extern void *_dtb_ptr;
 void kernel_main(char* x0) {
-    dtb_init(x0);
+    dtb_init(_dtb_ptr);
     shell();
 }
