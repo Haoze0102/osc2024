@@ -2,7 +2,7 @@
 #define __DTB_H__
 
 #include "stdint.h"
-// #include "string.h"
+#include "string.h"
 
 // five token types
 #define FDT_BEGIN_NODE 0x00000001

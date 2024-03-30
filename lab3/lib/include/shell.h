@@ -26,6 +26,7 @@ void cmd_sysinfo(char* param);
 void cmd_ls(char* param);
 void cmd_cat(char* param);
 void cmd_dtb(char* param);
+void cmd_exec(char* param);
 void cmd_unknown();
 
 struct func func_list[] = {
@@ -35,6 +36,7 @@ struct func func_list[] = {
     {.name = "sysinfo", .ptr = cmd_sysinfo, .desc = "get system info"},
     {.name = "ls", .ptr = cmd_ls, .desc = "list directory contents"},
     {.name = "cat", .ptr = cmd_cat, .desc = "concatenate and print files"},
-    {.name = "dtb", .ptr = cmd_dtb, .desc = "show device tree"}};
+    {.name = "dtb", .ptr = cmd_dtb, .desc = "show device tree"},
+    {.name = "exec", .ptr = cmd_exec, .desc = "execute a file"}};
 
 #endif

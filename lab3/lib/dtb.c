@@ -14,7 +14,7 @@ void dtb_parser(dtb_callback_t callback) {
 
     // Check magic
     if (get_be_uint32(&header->magic) != 0xd00dfeed) {
-        uart_write_string("[+] BAD\r\n");
+        uart_write_string("[+] BAD" ENDL);
         return;
     }
 
@@ -67,7 +67,7 @@ void dtb_get_initrd_callback(uint32_t token_type, char* name, char* data) {
 
         uart_write_string("[+] Initrd address: 0x");
         uart_puth(data);
-        uart_write_string("\r\n");
+        uart_write_string(ENDL);
     }
 }
 
@@ -77,20 +77,20 @@ void dtb_show_callback(uint32_t token_type, char* name, char* data) {
         case FDT_BEGIN_NODE:
             for (uint32_t i = 0; i < level; i++) uart_write_string("    ");
             uart_write_string(name);
-            uart_write_string(" {\r\n");
+            uart_write_string(" {"ENDL);
             level++;
             break;
 
         case FDT_END_NODE:
             level--;
             for (uint32_t i = 0; i < level; i++) uart_write_string("    ");
-            uart_write_string("}\r\n");
+            uart_write_string("}" ENDL);
             break;
 
         case FDT_PROP:
             for (uint32_t i = 0; i < level; i++) uart_write_string("    ");
             uart_write_string(name);
-            uart_write_string("\r\n");
+            uart_write_string(ENDL);
             break;
     }
 }

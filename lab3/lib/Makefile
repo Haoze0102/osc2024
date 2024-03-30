@@ -12,6 +12,7 @@ LIB_SRC = \
 	$(LIB_SRC_DIR)/mmio.c \
 	$(LIB_SRC_DIR)/shell.c \
 	$(LIB_SRC_DIR)/uart.c \
+	$(LIB_SRC_DIR)/exec.c \
 
 LIB_INCLUDES = \
 	-I $(LIB_SRC_DIR)/include \

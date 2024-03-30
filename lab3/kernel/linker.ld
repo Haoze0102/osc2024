@@ -10,6 +10,7 @@ SECTIONS
     { 
         KEEP(*(.text.boot))
         *(.text) 
+        *(.vector_table)
     }
     . = ALIGN(0x1000); /* align to page size */
     _text_end = .;

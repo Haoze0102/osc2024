@@ -4,8 +4,10 @@
 //#define INITRD_ADDR (0x8000000)  // QEMU: 0x8000000, Rpi3: 0x20000000
 extern void* INITRD_ADDR;
 
+#include "exec.h"
 #include "malloc.h"
 #include "stdint.h"
+#include "string.h"
 
 typedef struct cpio_newc_header {
     char c_magic[6];
@@ -34,5 +36,6 @@ void cpio_newc_show_header(cpio_newc_header* header);
 void cpio_newc_parse_data(char** cpio_ptr, char** buf, uint32_t size, uint32_t offset);
 void cpio_ls_callback(char* param, cpio_newc_header* header, char* file_name, uint32_t name_size, char* file_data, uint32_t data_size);
 void cpio_cat_callback(char* param, cpio_newc_header* header, char* file_name, uint32_t name_size, char* file_data, uint32_t data_size);
+void cpio_exec_callback(char* param, cpio_newc_header* header, char* file_name, uint32_t name_size, char* file_data, uint32_t data_size);
 
 #endif
