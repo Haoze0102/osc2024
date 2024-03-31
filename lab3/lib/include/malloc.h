@@ -17,5 +17,6 @@ typedef struct malloc_chunk {
 } malloc_chunk;
 
 void* malloc(uint32_t);
+void free();
 
 #endif

@@ -142,7 +142,7 @@ lower_el_aarch64_sync:   // The exception handler for a synchronous
 .balign 0x80
 lower_el_aarch64_irq:    // The exception handler for an IRQ from a lower EL
                          // (AArch64).
-    b       lower_el_aarch64_irq                         
+    b       _lower_el_aarch64_irq                         
 
 .balign 0x80
 lower_el_aarch64_fiq:    // The exception handler for an FIQ from a lower EL
@@ -176,12 +176,16 @@ lower_el_aarch32_serror: // The exception handler for a System Error
 
 _lower_el_aarch64_sync:
     save_all
-
     eor     x0, x0, x0
     eor     x1, x1, x1   
-
     load_all
     eret 
+
+_lower_el_aarch64_irq:
+    save_all
+    bl      core_timer_handler
+    load_all
+    eret
 
 .global _dtb_ptr	//define a global variable _dtb_ptr
 .section .data		//_dtb_ptr is in data section

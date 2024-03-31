@@ -18,3 +18,6 @@ void* malloc(uint32_t size) {
 
     return ret;
 }
+
+// TODO
+void free() {}

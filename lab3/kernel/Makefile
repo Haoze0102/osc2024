@@ -13,6 +13,7 @@ LIB_SRC = \
 	$(LIB_SRC_DIR)/uart.c \
 	$(LIB_SRC_DIR)/dtb.c \
 	$(LIB_SRC_DIR)/exec.c \
+	$(LIB_SRC_DIR)/timer.c \
 
 LIB_INCLUDES = \
 	-I $(LIB_SRC_DIR)/include \

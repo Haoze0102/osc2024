@@ -9,7 +9,7 @@ run:
 	qemu-system-aarch64 -M raspi3 -kernel kernel/kernel.img -display none -serial null -serial stdio -initrd initramfs.cpio -dtb bcm2710-rpi-3-b-plus.dtb
 
 debug:
-	qemu-system-aarch64 -M raspi3b -kernel kernel/kernel.img -display none -serial null -serial stdio -initrd initramfs.cpio -dtb bcm2710-rpi-3-b-plus.dtb -s -S
+	qemu-system-aarch64 -M raspi3 -kernel kernel/kernel.img -display none -serial null -serial stdio -initrd initramfs.cpio -dtb bcm2710-rpi-3-b-plus.dtb -s -S
 
 run_bootloader:
 	qemu-system-aarch64 -M raspi3b -kernel bootloader/bootloader.img -display none -serial null -serial pty -initrd initramfs.cpio -dtb bcm2710-rpi-3-b-plus.dtb
