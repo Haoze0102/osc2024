@@ -1,7 +1,9 @@
 #ifndef __DTB_H__
 #define __DTB_H__
 
-#include "stdint.h"
+#include <stdint.h>
+
+#include "printf.h"
 #include "string.h"
 
 // five token types

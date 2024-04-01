@@ -9,6 +9,7 @@ void enable_core_timer() {
         "msr    cntp_tval_el0, x0\n\t");  // TODO: cntfrq_el0 * 2 ??
 
     *(uint32_t*)CORE0_TIMER_IRQ_CTRL = 2;  // ENABLE, bit [1], nCNTPNSIRQ IRQ control
+    printf("test");
 }
 
 void core_timer_handler() {
@@ -23,6 +24,6 @@ void core_timer_handler() {
     asm volatile("mrs    %0, cntfrq_el0\n\t"
                  : "=r"(cntfrq_el0)); // The timer’s frequant.
 
-    // printf("Timer interrupt -> %02ds" ENDL, cntpct_el0 / cntfrq_el0);
-    uart_write_string("---timer test---");
+    printf("Timer interrupt -> %02ds" ENDL, cntpct_el0 / cntfrq_el0);
+    
 }

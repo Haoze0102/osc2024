@@ -1,9 +1,11 @@
 #ifndef __SHELL_H__
 #define __SHELL_H__
+#include <stdint.h>
+
 #include "cpio.h"
 #include "dtb.h"
 #include "mbox.h"
-#include "stdint.h"
+#include "printf.h"
 #include "reset.h"
 #include "string.h"
 // #include "uart.h"

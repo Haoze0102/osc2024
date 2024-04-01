@@ -4,15 +4,16 @@ LIB_SRC_DIR = ../lib
 
 LIB_SRC = \
 	$(LIB_SRC_DIR)/cpio.c \
-	$(LIB_SRC_DIR)/malloc.c \
-	$(LIB_SRC_DIR)/mmio.c \
 	$(LIB_SRC_DIR)/mbox.c \
 	$(LIB_SRC_DIR)/reset.c \
 	$(LIB_SRC_DIR)/string.c \
+	$(LIB_SRC_DIR)/dtb.c \
+	$(LIB_SRC_DIR)/malloc.c \
+	$(LIB_SRC_DIR)/mmio.c \
 	$(LIB_SRC_DIR)/shell.c \
 	$(LIB_SRC_DIR)/uart.c \
-	$(LIB_SRC_DIR)/dtb.c \
 	$(LIB_SRC_DIR)/exec.c \
+	$(LIB_SRC_DIR)/printf.c \
 	$(LIB_SRC_DIR)/timer.c \
 
 LIB_INCLUDES = \
@@ -38,7 +39,6 @@ APP_BUILD_DIR = $(BUILD_DIR)/app
 APP_OBJS := $(patsubst %.c,$(APP_BUILD_DIR)/%.o,$(notdir $(APP_SRC)))
 APP_OBJS += $(patsubst %.S,$(APP_BUILD_DIR)/%.o,$(notdir $(APP_ASM)))
 
-
 # ARM toolchain
 CROSS = aarch64-linux-gnu
 CC = $(CROSS)-gcc
@@ -62,7 +62,7 @@ OUT_ELF = ./$(PROJ).elf
 OUT_IMG = ./$(PROJ).img
 LINKER_FILE = linker.ld
 
-CCFLAGS = -Wall -O0 -fno-stack-protector
+CCFLAGS = -Wall -O0
 LDFLAGS = -T$(LINKER_FILE) -nostdlib -nostartfiles
 
 .PHONY: clean directories out_elf run
@@ -112,7 +112,6 @@ $(OUT_IMG): $(OUT_ELF)
 
 $(BUILD_DIRECTORIES):
 	mkdir -p $@
-
 
 clean:
 	rm -rf *.elf

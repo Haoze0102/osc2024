@@ -30,10 +30,6 @@ APP_BUILD_DIR = $(BUILD_DIR)/app
 APP_OBJS := $(patsubst %.c,$(APP_BUILD_DIR)/%.o,$(notdir $(APP_SRC)))
 APP_OBJS += $(patsubst %.S,$(APP_BUILD_DIR)/%.o,$(notdir $(APP_ASM)))
 
-VPATH += \
-	$(LIB_SRC_DIR) \
-	$(APP_SRC_DIR) \
-
 # ARM toolchain
 CROSS = aarch64-linux-gnu
 CC = $(CROSS)-gcc
@@ -58,7 +54,7 @@ OUT_IMG = ./$(PROJ).img
 LINKER_FILE = linker.ld
 
 CCFLAGS = -Wall -O0 -fno-stack-protector
-LDFLAGS = -T$(LINKER_FILE) -nostdlib
+LDFLAGS = -T$(LINKER_FILE) -nostdlib -nostartfiles
 
 .PHONY: clean directories out_elf run
 all: directories $(OUT_OBJS) $(OUT_ELF) $(OUT_IMG)

@@ -6,7 +6,7 @@
 #include "mmio.h"
 
 void uart_init();
-void uart_write(char c);
+void _putchar(char c);
 void uart_read(char* buf, uint32_t size);
 void uart_flush();
 void uart_write_string(char* str);

@@ -3,7 +3,7 @@
 char buf[0x100];
 
 void welcome_msg() {
-    uart_write_string(
+    printf(
         ENDL
         "   ____    _____   _____   ___    ___   ___   _  _" ENDL
         "  / __ \\  / ____| / ____| |__ \\  / _ \\ |__ \\ | || |" ENDL
@@ -15,9 +15,9 @@ void welcome_msg() {
 
 void read_cmd() {
     char tmp;
-    uart_write_string("# ");
+    printf("# ");
     for (uint32_t i = 0; uart_read(&tmp, 1);) {
-        uart_write(tmp);
+        _putchar(tmp);
         switch (tmp) {
             case '\r':
             case '\n':
@@ -27,7 +27,7 @@ void read_cmd() {
                 if (i > 0) {
                     i--;
                     buf[i] = '\0';
-                    uart_write_string("\b \b");
+                    printf("\b \b");
                 }
                 break;
             default:
@@ -52,16 +52,14 @@ void exec_cmd() {
 
 void cmd_help(char* param) {
     for (uint32_t i = 0; i < sizeof(func_list) / sizeof(struct func); i++) {
-        uart_write_string(func_list[i].name);
-        for (uint32_t j = 0; j < (10 - strlen(func_list[i].name)); j++) uart_write(' ');
-        uart_write_string(": ");
-        uart_write_string(func_list[i].desc);
-        uart_write_string(ENDL);
+        printf(func_list[i].name);
+        for (uint32_t j = 0; j < (10 - strlen(func_list[i].name)); j++) _putchar(' ');
+        printf(": %s" ENDL, func_list[i].desc);
     }
 }
 
 void cmd_hello(char* param) {
-    uart_write_string("Hello World!" ENDL);
+    printf("Hello World!" ENDL);
 }
 
 
@@ -74,20 +72,13 @@ void cmd_sysinfo(char* param) {
 
     // Board Revision
     get_board_revision(board_revision);
-    uart_write_string("Board Revision      : 0x");
-    uart_puth(*board_revision);
-    uart_write_string(ENDL);
+    printf("Board Revision      : 0x%08lX" ENDL, *board_revision);
 
     
     // Memory Info
     get_memory_info(mem_base, mem_size);
-    uart_write_string("Memroy Base Address : 0x");
-    uart_puth(*mem_base);
-    uart_write_string(ENDL);
-
-    uart_write_string("Memory Size         : 0x");
-    uart_puth(*mem_size);
-    uart_write_string(ENDL);
+    printf("Memroy Base Address : 0x%08lX" ENDL, *mem_base);
+    printf("Memory Size         : 0x%08lX" ENDL, *mem_size);
 }
 
 void cmd_reboot(char* param) {
@@ -112,9 +103,7 @@ void cmd_exec(char* param) {
 }
 
 void cmd_unknown() {
-    uart_write_string("Unknown command: ");
-    uart_write_string(buf);
-    uart_write_string(ENDL);
+    printf("Unknown command: %s" ENDL, buf);
 }
 
 void shell() {
@@ -123,9 +112,7 @@ void shell() {
     do {
         read_cmd();
 
-        uart_write_string("# ");
-        uart_write_string(buf);
-        uart_write_string(ENDL);
+        printf("# %s" ENDL, buf);
 
         exec_cmd();
     } while (1);

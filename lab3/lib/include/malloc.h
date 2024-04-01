@@ -1,7 +1,7 @@
 #ifndef __MEM_H__
 #define __MEM_H__
 
-#include "stdint.h"
+#include <stdint.h>
 
 /*
     | -------------------------------- |

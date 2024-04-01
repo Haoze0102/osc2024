@@ -1,7 +1,7 @@
 #ifndef __MMIO_H__
 #define __MMIO_H__
 // #include <stddef.h>
-#include "stdint.h"
+#include <stdint.h>
 
 #define PHY_BASE 0x3F000000
 #define BUS_BASE 0x7f000000

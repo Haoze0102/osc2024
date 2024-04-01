@@ -1,7 +1,7 @@
 #include "uart.h"
 
 #include "mmio.h"
-// #include "stdint.h"
+// #include <stdint.h>
 
 void uart_init() {
     uint32_t t;
@@ -69,7 +69,7 @@ void uart_init() {
     uart_flush();
 }
 
-void uart_write(char c) {
+void _putchar(char c) {
     while (!(mmio_read(AUX_MU_LSR_REG) & (1 << 5))) delay(1);
     mmio_write(AUX_MU_IO_REG, c);
 }
@@ -87,7 +87,7 @@ void uart_flush() {
 
 void uart_write_string(char* str) {
     for (uint32_t i = 0; str[i] != '\0'; i++) {
-        uart_write((char)str[i]);
+        _putchar((char)str[i]);
     }
 }
 
@@ -99,13 +99,13 @@ void uart_puth(uint32_t d) {
         c = (d >> i) & 0xF;
         /* Translate to hex */
         c = (c > 9) ? (0x37 + c) : (0x30 + c);
-        uart_write(c);
+        _putchar(c);
     }
 }
 
 void uart_putc(char* buf, uint32_t size) {
     for (uint32_t i = 0; i < size; i++) {
-        uart_write(buf[i]);
+        _putchar(buf[i]);
     }
 }
 

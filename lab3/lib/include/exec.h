@@ -1,7 +1,7 @@
 #ifndef __EXEC_H__
 #define __EXEC_H__
 
-#include "stdint.h"
+#include <stdint.h>
 
 #include "malloc.h"
 

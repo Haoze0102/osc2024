@@ -13,6 +13,7 @@ LIB_SRC = \
 	$(LIB_SRC_DIR)/shell.c \
 	$(LIB_SRC_DIR)/uart.c \
 	$(LIB_SRC_DIR)/exec.c \
+	$(LIB_SRC_DIR)/printf.c \
 	$(LIB_SRC_DIR)/timer.c \
 
 LIB_INCLUDES = \
@@ -35,7 +36,7 @@ BUILD_DIRECTORIES = \
 
 PROJ = lib
 
-CCFLAGS = -Wall -O0 -fno-builtin -fno-stack-protector
+CCFLAGS = -Wall -O0 -fno-stack-protector
 LDFLAGS = -T$(LINKER_FILE) -nostdlib -nostartfiles
 
 .PHONY: clean directories out_elf run

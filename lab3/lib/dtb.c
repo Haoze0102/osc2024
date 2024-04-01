@@ -14,7 +14,7 @@ void dtb_parser(dtb_callback_t callback) {
 
     // Check magic
     if (get_be_uint32(&header->magic) != 0xd00dfeed) {
-        uart_write_string("[+] BAD" ENDL);
+        printf("[+] BAD" ENDL);
         return;
     }
 
@@ -53,7 +53,7 @@ void dtb_parser(dtb_callback_t callback) {
                 callback(token_type, 0, 0);
                 break;
             default:
-                uart_puth(*ptr);
+                printf("%08lX", *ptr);
                 return;
                 break;
         }
@@ -65,9 +65,7 @@ void dtb_get_initrd_callback(uint32_t token_type, char* name, char* data) {
     if (token_type == FDT_PROP && !strcmp(name, "linux,initrd-start")) {
         INITRD_ADDR = get_be_uint32(data);
 
-        uart_write_string("[+] Initrd address: 0x");
-        uart_puth(data);
-        uart_write_string(ENDL);
+        printf("[+] Initrd address: 0x%08lX" ENDL, data);
     }
 }
 
@@ -75,22 +73,20 @@ void dtb_show_callback(uint32_t token_type, char* name, char* data) {
     static unsigned int level = 0;
     switch (token_type) {
         case FDT_BEGIN_NODE:
-            for (uint32_t i = 0; i < level; i++) uart_write_string("    ");
-            uart_write_string(name);
-            uart_write_string(" {"ENDL);
+            for (uint32_t i = 0; i < level; i++) printf("    ");
+            printf("%s {" ENDL, name);
             level++;
             break;
 
         case FDT_END_NODE:
             level--;
-            for (uint32_t i = 0; i < level; i++) uart_write_string("    ");
-            uart_write_string("}" ENDL);
+            for (uint32_t i = 0; i < level; i++) printf("    ");
+            printf("}" ENDL);
             break;
 
         case FDT_PROP:
-            for (uint32_t i = 0; i < level; i++) uart_write_string("    ");
-            uart_write_string(name);
-            uart_write_string(ENDL);
+            for (uint32_t i = 0; i < level; i++) printf("    ");
+            printf("%s" ENDL, name);
             break;
     }
 }
