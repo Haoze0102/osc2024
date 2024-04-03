@@ -3,7 +3,18 @@
 char buf[0x100];
 
 void welcome_msg() {
-    printf(
+    _putchar('B');
+    _async_putchar('A');
+    _async_putchar('\r');
+    _async_putchar('\n');
+
+    // async_uart_read(buf, 3);
+    // uart_write_string(buf);
+    async_printf("TEST" ENDL);
+    _putchar('B');
+    _putchar('\r');
+    _putchar('\n');
+    async_printf(
         ENDL
         "   ____    _____   _____   ___    ___   ___   _  _" ENDL
         "  / __ \\  / ____| / ____| |__ \\  / _ \\ |__ \\ | || |" ENDL
@@ -15,13 +26,14 @@ void welcome_msg() {
 
 void read_cmd() {
     char tmp;
-    printf("# ");
-    for (uint32_t i = 0; uart_read(&tmp, 1);) {
-        _putchar(tmp);
+    async_printf("# ");
+    for (uint32_t i = 0; async_uart_read(&tmp, 1);) {
+        // _async_putchar(tmp);
         switch (tmp) {
             case '\r':
             case '\n':
                 buf[i++] = '\0';
+                printf(ENDL);
                 return;
             case 127:  // Backspace
                 if (i > 0) {
@@ -32,6 +44,7 @@ void read_cmd() {
                 break;
             default:
                 buf[i++] = tmp;
+                _putchar(tmp);
                 break;
         }
     }
@@ -102,18 +115,20 @@ void cmd_exec(char* param) {
     cpio_newc_parser(cpio_exec_callback, param);
 }
 
+void cmd_timer(char* param) {
+    enable_core_timer();
+}
+
 void cmd_unknown() {
-    printf("Unknown command: %s" ENDL, buf);
+    async_printf("Unknown command: %s" ENDL, buf);
 }
 
 void shell() {
     cpio_init();
+    // enable_core_timer();
     welcome_msg();
     do {
         read_cmd();
-
-        printf("# %s" ENDL, buf);
-
         exec_cmd();
     } while (1);
 }

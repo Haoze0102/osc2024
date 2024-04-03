@@ -3,6 +3,13 @@
 #include "mmio.h"
 // #include <stdint.h>
 
+char tx_buf[MAX_BUF_SIZE] = {0},
+     rx_buf[MAX_BUF_SIZE] = {0};
+uint32_t tx_buf_head = 0,
+         tx_buf_tail = 0,
+         rx_buf_head = 0,
+         rx_buf_tail = 0;
+
 void uart_init() {
     uint32_t t;
 
@@ -74,10 +81,30 @@ void _putchar(char c) {
     mmio_write(AUX_MU_IO_REG, c);
 }
 
+void _async_putchar(char c) {
+    // wait, while tx_buf is full
+    // ex. MAX_BUF_SIZE = 5, tx_buf_tail = 4, (4+1)%5 == 0
+    while ((tx_buf_tail + 1) % MAX_BUF_SIZE == tx_buf_head) uart_enable_int(TX); 
+
+    tx_buf[tx_buf_tail++] = c;
+
+    // Ensure tx_buf_tail remains within the valid index range of the transmission buffer
+    tx_buf_tail %= MAX_BUF_SIZE;
+
+    uart_enable_int(TX);
+}
+
 void uart_read(char* buf, uint32_t size) {
     for (uint32_t i = 0; i < size; i++) {
         while (!(mmio_read(AUX_MU_LSR_REG) & 1)) delay(1);
         buf[i] = mmio_read(AUX_MU_IO_REG) & 0xff;
+    }
+}
+
+void async_uart_read(char* buf, uint32_t size) {
+    for (uint32_t i = 0; i < size; i++) {
+        while (rx_buf_head == rx_buf_tail) uart_enable_int(RX);  // wait, while rx_buf is empty
+        buf[i] = rx_buf[rx_buf_head++];
     }
 }
 
@@ -112,4 +139,40 @@ void uart_putc(char* buf, uint32_t size) {
 void delay(uint32_t t) {
     for (uint32_t i = 0; i < t; i++)
         asm volatile("nop");
+}
+
+void uart_enable_aux_int() {
+    uint32_t t = mmio_read(IRQ_ENABLE_1);
+    t |= IRQ_PEND_AUX_INT;
+    mmio_write(IRQ_ENABLE_1, t);
+}
+
+void uart_enable_int(uint32_t type) {
+    uint32_t t = mmio_read(AUX_MU_IER_REG);
+    mmio_write(AUX_MU_IER_REG, t | type);
+}
+
+void uart_disable_int(uint32_t type) {
+    uint32_t t = mmio_read(AUX_MU_IER_REG);
+    mmio_write(AUX_MU_IER_REG, t & ~(type));
+}
+
+void uart_int_handler() {
+    if (mmio_read(AUX_MU_IIR_REG) & (0b01 << 1)) {  // Transmit holding register empty -> tx can write
+        if (tx_buf_head == tx_buf_tail) {           // tx_buf is empty
+            uart_disable_int(TX);
+            return;
+        }
+        _putchar(tx_buf[tx_buf_head++]);
+        tx_buf_head %= MAX_BUF_SIZE;
+    } else if (mmio_read(AUX_MU_IIR_REG) & (0b10 << 1)) {       // Receiver holds valid byte -> rx can read
+        if ((rx_buf_tail + 1) % MAX_BUF_SIZE == rx_buf_head) {  // rx_buf is full
+            uart_disable_int(RX);
+            return;
+        }
+        uart_read(&(rx_buf[rx_buf_tail++]), 1);  // transfer pointer!!
+        rx_buf_tail %= MAX_BUF_SIZE;
+    } else {
+        uart_write_string("[+] uart_int_handler() Error" ENDL);
+    }
 }

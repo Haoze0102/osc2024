@@ -106,46 +106,53 @@ el1_start:
 Vector_table_el1:
 curr_el_sp0_sync:        // The exception handler for a synchronous 
                          // exception from the current EL using SP0.
-    b       curr_el_sp0_sync
+    mov     x0, #0
+    b       _invalid_exception
 
 .balign 0x80
 curr_el_sp0_irq:         // The exception handler for an IRQ exception
                          // from the current EL using SP0.
-    b       curr_el_sp0_irq
+    mov     x0, #1
+    b       _invalid_exception
 
 .balign 0x80
 curr_el_sp0_fiq:         // The exception handler for an FIQ exception
                          // from the current EL using SP0.
-    b       curr_el_sp0_fiq
+    mov     x0, #2
+    b       _invalid_exception
 
 .balign 0x80
 curr_el_sp0_serror:      // The exception handler for a System Error 
                          // exception from the current EL using SP0.
-    b       curr_el_sp0_serror
+    mov     x0, #3
+    b       _invalid_exception
 
 .balign 0x80
 curr_el_spx_sync:        // The exception handler for a synchrous 
                          // exception from the current EL using the
                          // current SP.
-    b       curr_el_spx_sync
+    mov     x0, #4
+    b       _invalid_exception
 
 .balign 0x80
 curr_el_spx_irq:         // The exception handler for an IRQ exception from 
                          // the current EL using the current SP.
-    b       curr_el_spx_irq                     
+    b       _lower_el_aarch64_irq                     
 
 .balign 0x80
 curr_el_spx_fiq:         // The exception handler for an FIQ from 
                          // the current EL using the current SP.
-    b       curr_el_spx_fiq                     
+    mov     x0, #6
+    b       _invalid_exception                       
 
 .balign 0x80
 curr_el_spx_serror:      // The exception handler for a System Error 
                          // exception from the current EL using the
                          // current SP.
-    b       curr_el_spx_serror                         
+    mov     x0, #7
+    b       _invalid_exception                        
 
- .balign 0x80
+.balign 0x80
 lower_el_aarch64_sync:   // The exception handler for a synchronous 
                          // exception from a lower EL (AArch64).
     b       _lower_el_aarch64_sync
@@ -158,43 +165,54 @@ lower_el_aarch64_irq:    // The exception handler for an IRQ from a lower EL
 .balign 0x80
 lower_el_aarch64_fiq:    // The exception handler for an FIQ from a lower EL
                          // (AArch64).
-    b       lower_el_aarch64_fiq                         
+    mov     x0, #10
+    b       _invalid_exception                         
 
 .balign 0x80
 lower_el_aarch64_serror: // The exception handler for a System Error 
                          // exception from a lower EL(AArch64).
-    b       lower_el_aarch64_serror                     
+    mov     x0, #11
+    b       _invalid_exception                      
 
 .balign 0x80
 lower_el_aarch32_sync:   // The exception handler for a synchronous 
                          // exception from a lower EL(AArch32).
-    b       lower_el_aarch32_sync
+    mov     x0, #12
+    b       _invalid_exception
 
 .balign 0x80
 lower_el_aarch32_irq:    // The exception handler for an IRQ exception 
                          // from a lower EL (AArch32).
-    b       lower_el_aarch32_irq
+    mov     x0, #13
+    b       _invalid_exception
 
 .balign 0x80
 lower_el_aarch32_fiq:    // The exception handler for an FIQ exception from 
                          // a lower EL (AArch32).
-    b       lower_el_aarch32_fiq                         
+    mov     x0, #14
+    b       _invalid_exception                        
 
 .balign 0x80
 lower_el_aarch32_serror: // The exception handler for a System Error
                          // exception from a lower EL(AArch32).
-    b       lower_el_aarch32_serror                         
+    mov     x0, #15
+    b       _invalid_exception                          
 
 _lower_el_aarch64_sync:
     save_all
-    eor     x0, x0, x0
-    eor     x1, x1, x1   
+    bl      sync_handler   
     load_all
     eret 
 
 _lower_el_aarch64_irq:
     save_all
-    bl      core_timer_handler
+    bl      irq_handler
+    load_all
+    eret
+
+_invalid_exception:
+    save_all
+    bl      invalid_handler
     load_all
     eret
 
