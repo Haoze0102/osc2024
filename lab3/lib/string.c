@@ -37,3 +37,29 @@ uint32_t get_be_uint32(void *ptr) {
     uint8_t *bytes = (uint8_t *)ptr;
     return bytes[3] | bytes[2] << 8 | bytes[1] << 16 | bytes[0] << 24;
 }
+
+char *memcpy(void *dest, const void *src, uint64_t len) {
+    char *d = dest;
+    while (len--) *d++ = *(char *)src++;
+    return dest;
+}
+
+char *strcpy(char *dest, char *src) {
+    return memcpy(dest, src, strlen(src) + 1);
+}
+
+char *strchr(const char *str, int ch) {
+    for (uint64_t i = 0; str[i] != '\0'; i++) {
+        if (str[i] == ch) return str + i;
+    }
+    return;
+}
+
+uint32_t atoi(const char *nptr) {
+    uint32_t t = 0;
+    for (uint64_t i = 0; nptr[i] != '\0'; i++) {
+        t *= 10;
+        t += nptr[i] - '0';
+    }
+    return t;
+}

@@ -1,6 +1,7 @@
 #include "shell.h"
 
 char buf[0x100];
+uint32_t buf_idx;
 
 void welcome_msg() {
     _putchar('B');
@@ -27,23 +28,23 @@ void welcome_msg() {
 void read_cmd() {
     char tmp;
     async_printf("# ");
-    for (uint32_t i = 0; async_uart_read(&tmp, 1);) {
+    for (buf_idx = 0; async_uart_read(&tmp, 1);) {
         // _async_putchar(tmp);
         switch (tmp) {
             case '\r':
             case '\n':
-                buf[i++] = '\0';
+                buf[buf_idx++] = '\0';
                 printf(ENDL);
                 return;
             case 127:  // Backspace
-                if (i > 0) {
-                    i--;
-                    buf[i] = '\0';
+                if (buf_idx > 0) {
+                    buf_idx--;
+                    buf[buf_idx] = '\0';
                     printf("\b \b");
                 }
                 break;
             default:
-                buf[i++] = tmp;
+                buf[buf_idx++] = tmp;
                 _putchar(tmp);
                 break;
         }
@@ -51,6 +52,7 @@ void read_cmd() {
 }
 
 void exec_cmd() {
+    parse_arg();
     if (!strlen(buf)) return;
     for (uint32_t i = 0; i < sizeof(func_list) / sizeof(struct func); i++) {
         if (!strncmp(buf, func_list[i].name, strlen(func_list[i].name) - 1)) {
@@ -61,6 +63,13 @@ void exec_cmd() {
         }
     }
     cmd_unknown();
+}
+
+void parse_arg() {
+    // TODO: remove extra spaces
+}
+
+uint64_t get_arg(uint64_t i) {
 }
 
 void cmd_help(char* param) {
@@ -116,7 +125,15 @@ void cmd_exec(char* param) {
 }
 
 void cmd_timer(char* param) {
-    enable_core_timer();
+    add_timer(show_time_callback, param, 2);
+}
+
+void cmd_setTimeout(char* param) {
+    // TODO: better parameter handling
+    char *arg1 = param,
+         *arg2 = strchr(param, ' ') + 1;
+    *strchr(param, ' ') = '\0';
+    add_timer(show_msg_callback, arg1, atoi(arg2));
 }
 
 void cmd_unknown() {
@@ -125,7 +142,8 @@ void cmd_unknown() {
 
 void shell() {
     cpio_init();
-    // enable_core_timer();
+    timer_list_init();
+    enable_core_timer();
     welcome_msg();
     do {
         read_cmd();
