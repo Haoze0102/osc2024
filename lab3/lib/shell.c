@@ -4,17 +4,6 @@ char buf[0x100];
 uint32_t buf_idx;
 
 void welcome_msg() {
-    _putchar('B');
-    _async_putchar('A');
-    _async_putchar('\r');
-    _async_putchar('\n');
-
-    // async_uart_read(buf, 3);
-    // uart_write_string(buf);
-    async_printf("TEST" ENDL);
-    _putchar('B');
-    _putchar('\r');
-    _putchar('\n');
     async_printf(
         ENDL
         "   ____    _____   _____   ___    ___   ___   _  _" ENDL

@@ -5,7 +5,6 @@
 #include "malloc.h"
 #include "printf.h"
 #include "regs.h"
-#include "stdint.h"
 #include "string.h"
 
 #define CORE0_TIMER_IRQ_CTRL 0x40000040

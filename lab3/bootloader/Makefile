@@ -6,6 +6,7 @@ LIB_SRC = \
 	$(LIB_SRC_DIR)/mmio.c \
 	$(LIB_SRC_DIR)/mbox.c \
 	$(LIB_SRC_DIR)/uart.c \
+	$(LIB_SRC_DIR)/string.c \
 
 LIB_INCLUDES = \
 	-I $(LIB_SRC_DIR)/include \
