@@ -5,7 +5,7 @@ LIB_SRC_DIR = ../lib
 LIB_SRC = \
 	$(LIB_SRC_DIR)/mmio.c \
 	$(LIB_SRC_DIR)/mbox.c \
-	$(LIB_SRC_DIR)/uart.c \
+	$(LIB_SRC_DIR)/uart_boot.c \
 	$(LIB_SRC_DIR)/string.c \
 
 LIB_INCLUDES = \

@@ -15,5 +15,4 @@ char *strcpy(char *dest, char *src);
 char *strchr(const char *str, int ch);
 uint32_t atoi(const char *nptr);
 
-
 #endif

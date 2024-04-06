@@ -1,46 +1,58 @@
 #include "timer.h"
 
-struct list_head* timer_event_list;  // first head has nothing, store timer_event_t after it
-
-void timer_list_init() {
-    INIT_LIST_HEAD(timer_event_list);
-}
+struct list_head* timer_event_list;
 
 void enable_core_timer() {
     asm volatile(
         "mov    x0, 1\n\t"
-        "msr    cntp_ctl_el0, x0\n\t"); // enable timer
+        "msr    cntp_ctl_el0, x0\n\t");
 
     *(uint32_t*)CORE0_TIMER_IRQ_CTRL = 2;  // enable rip3 timer interrupt
+
+    struct list_head* curr;
+}
+
+void disable_core_timer() {
+    *(uint32_t*)CORE0_TIMER_IRQ_CTRL = 0;  // disable rip3 timer interrupt
 }
 
 void core_timer_handler() {
+    disable_core_timer();  // [ Lab3 - AD2 ] 1. masks the device’s interrupt line,
+    add_task(core_timer_callback, PRIORITY_NORMAL);
+}
+
+void core_timer_callback() {
+    // return;
     // if there is no timer event, set a huge expire time
     if (list_empty(timer_event_list)) {
-        
-        set_relative_timeout(65535); // disable timer interrupt (set a very big value)
+        //printf("[+] timer_event_list is empty" ENDL);
+        set_relative_timeout(65535);
+        enable_core_timer();
         return;
     }
 
-    timer_event_callback((timer_event_t *)timer_event_list->next); // do callback and set new interrupt
-}
+    // trigger the first callback
+    ((void (*)(char*))((timer_event_t*)timer_event_list->next)->callback)(((timer_event_t*)timer_event_list->next)->args);
 
-void timer_event_callback(timer_event_t * timer_event){
-    ((void (*)(char*))timer_event-> callback)(timer_event->args);  // call the event
-    list_del_entry((struct list_head*)timer_event); // delete the event in queue
-    free(timer_event->args);                        // free the event's space
-    free(timer_event);
-    // ((void (*)(char*))timer_event-> callback)(timer_event->args);  // call the event
+    // remove the first event
+    list_rotate_left(timer_event_list);
+    list_del(timer_event_list->prev);
+    free();
 
-    // set queue linked list to next time event if it exists
-    if(!list_empty(timer_event_list))
-    {
+    // if there is next event, set next timeout
+    if (list_empty(timer_event_list)) {
+        set_relative_timeout(65535);
+    } else {
         set_absolute_timeout(((timer_event_t*)timer_event_list->next)->tval);
     }
-    else
-    {
-        set_relative_timeout(10000);  // disable timer interrupt (set a very big value)
-    }
+
+    // [ Lab3 - AD2 ] 5. unmasks the interrupt line to get the next interrupt at the end of the task.
+    enable_core_timer();
+}
+
+void timer_list_init() {
+    timer_event_list = malloc(sizeof(struct list_head));
+    INIT_LIST_HEAD(timer_event_list);
 }
 
 uint64_t get_absolute_time(uint64_t offset) {
@@ -52,19 +64,21 @@ uint64_t get_absolute_time(uint64_t offset) {
 
 void add_timer(void* callback, char* args, uint64_t timeout) {
     timer_event_t* new_timer_event = malloc(sizeof(timer_event_t));
-    // store all the related information in timer_event
-    new_timer_event->args = malloc(strlen(args) + 1);// If strlen(args) = 0, the null terminator '\0' at the end of the string.
-    strcpy(new_timer_event->args, args); // put args into space(new_timer_event->args)
-    new_timer_event->tval = get_absolute_time(timeout);
-    new_timer_event->callback = callback;
     INIT_LIST_HEAD(&new_timer_event->node);
+    new_timer_event->args = malloc(strlen(args) + 1);
+    strcpy(new_timer_event->args, args);
+    new_timer_event->callback = callback;
+    new_timer_event->tval = get_absolute_time(timeout);
 
+    // set first event interrupt
+    if (list_empty(timer_event_list)) set_absolute_timeout(new_timer_event->tval);
 
-    // add the timer_event into timer_event_list (sorted)
+    // insert node
     struct list_head* curr;
+    //bool inserted = false;
     list_for_each(curr, timer_event_list) {
         if (new_timer_event->tval < ((timer_event_t*)curr)->tval) {
-            list_add(&new_timer_event->node, curr->prev);  // add this timer at the place just before the bigger one (sorted)
+            list_add(&new_timer_event->node, curr->prev);
             break;
         }
     }
@@ -80,6 +94,7 @@ void add_timer(void* callback, char* args, uint64_t timeout) {
 
 void show_timer_list() {
     struct list_head* curr;
+    bool inserted = false;
     list_for_each(curr, timer_event_list) {
         printf("%u -> ", ((timer_event_t*)curr)->tval);
     }
@@ -91,14 +106,16 @@ void sleep(uint64_t timeout) {
 }
 
 void show_msg_callback(char* args) {
-    async_printf("[+] show_msg_callback(%s)" ENDL, args);
+    // async_printf("[+] show_msg_callback(%s)" ENDL, args);
+    printf("[+] show_msg_callback() -> %s" ENDL, args);
 }
 
 void show_time_callback(char* args) {
     uint64_t cntpct_el0, cntfrq_el0;
     get_reg(cntpct_el0, cntpct_el0);
     get_reg(cntfrq_el0, cntfrq_el0);
-    async_printf("[+] show_time_callback() -> %02ds" ENDL, cntpct_el0 / cntfrq_el0);
+    // async_printf("[+] show_time_callback() -> %02ds" ENDL, cntpct_el0 / cntfrq_el0);
+    printf("[+] show_time_callback() -> %02ds" ENDL, cntpct_el0 / cntfrq_el0);
 
     add_timer(show_time_callback, args, 2);
 }

@@ -16,6 +16,7 @@ LIB_SRC = \
 	$(LIB_SRC_DIR)/printf.c \
 	$(LIB_SRC_DIR)/timer.c \
 	$(LIB_SRC_DIR)/exception.c \
+	$(LIB_SRC_DIR)/task.c \
 
 LIB_INCLUDES = \
 	-I $(LIB_SRC_DIR)/include \

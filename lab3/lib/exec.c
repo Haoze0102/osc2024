@@ -9,7 +9,7 @@ void exec(char* file_data, uint32_t data_size) {
         "msr sp_el0, %2\n\t"    // stack for EL0
         "eret\n\t" ::"r"(0),
         "r"(file_data),
-        "r"(ustack + USTACK_SIZE)); // Passing the address of the top of the user stack (ustack + USTACK_SIZE)
+        "r"(ustack + USTACK_SIZE));
 
     free();
 }

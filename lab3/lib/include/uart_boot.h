@@ -1,5 +1,5 @@
-#ifndef __UART_H__
-#define __UART_H__
+#ifndef __UART_BOOT_H__
+#define __UART_BOOT_H__
 
 #include "aux.h"
 #include "exception.h"
@@ -8,9 +8,6 @@
 #include "task.h"
 
 #define MAX_BUF_SIZE 0x100
-// AUX_MU_IER_REG, Enable mini UART interrupt
-// bit 0 Enable receive interrupts.
-// bit 1 Enable transmit interrupts.
 #define RX (1 << 0)  // read
 #define TX (1 << 1)  // write
 
@@ -28,9 +25,5 @@ void delay(uint32_t t);
 void uart_enable_aux_int();
 void uart_enable_int(uint32_t type);
 void uart_disable_int(uint32_t type);
-void uart_int_handler();
-
-void uart_write_callback();
-void uart_read_callback();
 
 #endif

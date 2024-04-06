@@ -1,9 +1,9 @@
-#ifndef __REGS_H__
-#define __REGS_H__
+#ifndef __EXCEPTIONS_H__
+#define __EXCEPTIONS_H__
 
 #include "mmio.h"
 #include "printf.h"
-//#include "task.h"
+#include "task.h"
 #include "timer.h"
 #include "uart.h"
 
@@ -29,7 +29,7 @@
 #define CORE2_FIQ_SRC 0x40000078
 #define CORE3_FIQ_SRC 0x4000007C
 
-#define IRQ_PEND_AUX_INT (1 << 29) // Mini UART
+#define IRQ_PEND_AUX_INT (1 << 29)  // Mini UART
 
 #define SRC_CNTPSIRQ_INT (1 << 0)
 #define SRC_CNTPNSIRQ_INT (1 << 1)

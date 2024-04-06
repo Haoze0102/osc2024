@@ -11,13 +11,17 @@
 
 typedef struct timer_event {
     struct list_head node;
-    unsigned long long tval;  //store as tick time after cpu start
-    void *callback; // interrupt -> timer_callback -> callback(args)
-    char* args; // need to free the string by event callback function
+    void* callback; // interrupt -> timer_callback -> callback(args)
+    char* args;     // need to free the string by event callback function
+    uint64_t tval;  //store as tick time after cpu start
 } timer_event_t;
 
 void enable_core_timer();
+void disable_core_timer();
+
 void core_timer_handler();
+void core_timer_callback();
+
 void timer_list_init();
 uint64_t get_absolute_time(uint64_t offset);
 void add_timer(void* callback, char* args, uint64_t timeout);

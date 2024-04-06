@@ -1,4 +1,5 @@
 #include "dtb.h"
+
 // #include "uart.h"
 char* DTB_ADDRESS;
 void* INITRD_ADDR;
@@ -11,7 +12,7 @@ void dtb_init(uint64_t x0) {
 
 void dtb_parser(dtb_callback_t callback) {
     fdt_header* header = (fdt_header*)DTB_ADDRESS;
-
+    uart_puth(header);
     // Check magic
     if (get_be_uint32(&header->magic) != 0xd00dfeed) {
         printf("[+] BAD" ENDL);
@@ -22,12 +23,11 @@ void dtb_parser(dtb_callback_t callback) {
          *dt_strings = (char*)header + get_be_uint32(&header->off_dt_strings);
     char* ptr = dt_sturct;
     uint32_t token_type;
-    uint32_t len;
 
     while (1) {
         token_type = get_be_uint32(ptr);
         ptr += 4;
-
+        uint32_t len;
         switch (token_type) {
             case FDT_BEGIN_NODE:
                 callback(token_type, ptr, 0);

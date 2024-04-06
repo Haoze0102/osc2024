@@ -46,6 +46,6 @@ struct func func_list[] = {
     {.name = "dtb", .ptr = cmd_dtb, .desc = "show device tree"},
     {.name = "exec", .ptr = cmd_exec, .desc = "execute a file"},
     {.name = "timer", .ptr = cmd_timer, .desc = "start timer notification"},
-    {.name = "setTimeout", .ptr = cmd_setTimeout, .desc = "setTimeout MESSAGE SECONDS"}};
+    {.name = "setTimeout", .ptr = cmd_setTimeout, .desc = "Usage: setTimeout <MESSAGE> <SECONDS>"}};
 
 #endif

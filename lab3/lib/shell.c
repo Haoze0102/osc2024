@@ -4,20 +4,21 @@ char buf[0x100];
 uint32_t buf_idx;
 
 void welcome_msg() {
-    async_printf(
-        ENDL
-        "   ____    _____   _____   ___    ___   ___   _  _" ENDL
-        "  / __ \\  / ____| / ____| |__ \\  / _ \\ |__ \\ | || |" ENDL
-        " | |  | || (___  | |         ) || | | |   ) || || |_" ENDL
-        " | |  | | \\___ \\ | |        / / | | | |  / / |__   _|" ENDL
-        " | |__| | ____) || |____   / /_ | |_| | / /_    | | "ENDL
-        "  \\____/ |_____/  \\_____| |____| \\___/ |____|   |_|" ENDL);
+    async_printf(ENDL);
+    async_printf("   ____    _____   _____   ___    ___   ___   _  _" ENDL);
+    async_printf("  / __ \\  / ____| / ____| |__ \\  / _ \\ |__ \\ | || |" ENDL);
+    async_printf(" | |  | || (___  | |         ) || | | |   ) || || |_" ENDL);
+    async_printf(" | |  | | \\___ \\ | |        / / | | | |  / / |__   _|" ENDL);
+    async_printf(" | |__| | ____) || |____   / /_ | |_| | / /_    | | "ENDL);
+    async_printf("  \\____/ |_____/  \\_____| |____| \\___/ |____|   |_|" ENDL);
 }
+
 
 void read_cmd() {
     char tmp;
     async_printf("# ");
-    for (buf_idx = 0; async_uart_read(&tmp, 1);) {
+    for (buf_idx = 0;;) {
+        async_uart_read(&tmp, 1);
         // _async_putchar(tmp);
         switch (tmp) {
             case '\r':
@@ -73,10 +74,12 @@ void cmd_hello(char* param) {
     printf("Hello World!" ENDL);
 }
 
-
+void cmd_reboot(char* param) {
+    reset(10);
+}
 
 void cmd_sysinfo(char* param) {
-    uint32_t *board_revision;
+    uint32_t* board_revision;
     uint32_t *board_serial_msb, *board_serial_lsb;
     uint32_t *mem_base, *mem_size;
     const int padding = 20;
@@ -85,16 +88,10 @@ void cmd_sysinfo(char* param) {
     get_board_revision(board_revision);
     printf("Board Revision      : 0x%08lX" ENDL, *board_revision);
 
-    
     // Memory Info
     get_memory_info(mem_base, mem_size);
     printf("Memroy Base Address : 0x%08lX" ENDL, *mem_base);
     printf("Memory Size         : 0x%08lX" ENDL, *mem_size);
-}
-
-void cmd_reboot(char* param) {
-    uart_write_string("Rebooting...."ENDL);
-    reset(10);
 }
 
 void cmd_ls(char* param) {
@@ -131,7 +128,6 @@ void cmd_unknown() {
 
 void shell() {
     cpio_init();
-    timer_list_init();
     enable_core_timer();
     welcome_msg();
     do {

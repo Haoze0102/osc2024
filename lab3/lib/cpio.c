@@ -1,6 +1,4 @@
 #include "cpio.h"
-#include "exec.h"
-
 
 cpio_newc_header* header;
 
@@ -39,20 +37,49 @@ void cpio_newc_parse_header(char** cpio_ptr, cpio_newc_header** header) {
 }
 
 void cpio_newc_show_header(cpio_newc_header* header) {
-    printf("c_magic: %.*s" ENDL, 6, (header)->c_magic);
-    printf("c_ino: %.*s" ENDL, 8, (header)->c_ino);
-    printf("c_mode: %.*s" ENDL, 8, (header)->c_mode);
-    printf("c_uid: %.*s" ENDL, 8, (header)->c_uid);
-    printf("c_gid: %.*s" ENDL, 8, (header)->c_gid);
-    printf("c_nlink: %.*s" ENDL, 8, (header)->c_nlink);
-    printf("c_mtime: %.*s" ENDL, 8, (header)->c_mtime);
-    printf("c_filesize: %.*s" ENDL, 8, (header)->c_filesize);
-    printf("c_devmajor: %.*s" ENDL, 8, (header)->c_devmajor);
-    printf("c_devminor: %.*s" ENDL, 8, (header)->c_devminor);
-    printf("c_rdevmajor: %.*s" ENDL, 8, (header)->c_rdevmajor);
-    printf("c_rdevminor: %.*s" ENDL, 8, (header)->c_rdevminor);
-    printf("c_namesize: %.*s" ENDL, 8, (header)->c_namesize);
-    printf("c_check: %.*s" ENDL, 8, (header)->c_check);
+    char buf[0x10] = {};
+
+    memcpy(buf, (header)->c_magic, 6);
+    printf("c_magic: %s" ENDL, buf);
+
+    memcpy(buf, (header)->c_ino, 8);
+    printf("c_ino: %s" ENDL, buf);
+
+    memcpy(buf, (header)->c_mode, 8);
+    printf("c_mode: %s" ENDL, buf);
+
+    memcpy(buf, (header)->c_uid, 8);
+    printf("c_uid: %s" ENDL, buf);
+
+    memcpy(buf, (header)->c_gid, 8);
+    printf("c_gid: %s" ENDL, buf);
+
+    memcpy(buf, (header)->c_nlink, 8);
+    printf("c_nlink: %s" ENDL, buf);
+
+    memcpy(buf, (header)->c_mtime, 8);
+    printf("c_mtime: %s" ENDL, buf);
+
+    memcpy(buf, (header)->c_filesize, 8);
+    printf("c_filesize: %s" ENDL, buf);
+
+    memcpy(buf, (header)->c_devmajor, 8);
+    printf("c_devmajor: %s" ENDL, buf);
+
+    memcpy(buf, (header)->c_devminor, 8);
+    printf("c_devminor: %s" ENDL, buf);
+
+    memcpy(buf, (header)->c_rdevmajor, 8);
+    printf("c_rdevmajor: %s" ENDL, buf);
+
+    memcpy(buf, (header)->c_rdevminor, 8);
+    printf("c_rdevminor: %s" ENDL, buf);
+
+    memcpy(buf, (header)->c_namesize, 8);
+    printf("c_namesize: %s" ENDL, buf);
+
+    memcpy(buf, (header)->c_check, 8);
+    printf("c_check: %s" ENDL, buf);
 }
 
 void cpio_newc_parse_data(char** cpio_ptr, char** buf, uint32_t size, uint32_t offset) {
@@ -65,14 +92,22 @@ void cpio_newc_parse_data(char** cpio_ptr, char** buf, uint32_t size, uint32_t o
 
 void cpio_ls_callback(char* param, cpio_newc_header* header, char* file_name, uint32_t name_size, char* file_data, uint32_t data_size) {
     // TODO: impelment parameter
-    printf("%.*s" ENDL, name_size, file_name);
+    char buf[0x100];
+    memcpy(buf, file_name, name_size);
+    printf("%s" ENDL, buf);
 }
 
 void cpio_cat_callback(char* param, cpio_newc_header* header, char* file_name, uint32_t name_size, char* file_data, uint32_t data_size) {
     // TODO: implement multi-parameter
     if (strcmp(param, file_name)) return;
-    printf("Filename: %.*s" ENDL, name_size, file_name);
-    printf("%.*s" ENDL, data_size, file_data);
+    char buf[0x100];
+
+    memcpy(buf, file_name, name_size);
+    printf("Filename: %s" ENDL, buf);
+
+    data_size %= 0x100;
+    memcpy(buf, file_data, data_size);
+    printf("%s" ENDL, buf);
 }
 
 void cpio_exec_callback(char* param, cpio_newc_header* header, char* file_name, uint32_t name_size, char* file_data, uint32_t data_size) {
