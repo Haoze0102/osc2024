@@ -32,7 +32,7 @@ clean:
 	rm -rf $(BUILD_DIR) *.img
 
 run:
-	qemu-system-aarch64 -M raspi3 -kernel kernel8.img -serial null -serial stdio -initrd /root/osc2024/lab3_unknown/create_fs/initramfs.cpio -dtb bcm2710-rpi-3-b-plus.dtb
+	qemu-system-aarch64 -M raspi3 -kernel kernel8.img -serial null -serial stdio -initrd /root/osc2024/lab4/create_fs/initramfs.cpio -dtb bcm2710-rpi-3-b-plus.dtb
 
 debug:
 	qemu-system-aarch64 -M raspi3b -kernel kernel8.img -serial null -serial stdio -initrd initramfs.cpio -dtb bcm2710-rpi-3-b-plus.dtb -S -s

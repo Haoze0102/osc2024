@@ -6,7 +6,7 @@
 #include "cpio.h"
 #include "u_string.h"
 #include "dtb.h"
-#include "heap.h"
+#include "memory.h"
 #include "timer.h"
 
 #define CLI_MAX_CMD 11
@@ -22,7 +22,7 @@ struct CLI_CMDS cmd_list[CLI_MAX_CMD]=
     {.command="exec", .help="execute a command, replacing current image with a new image"},
     {.command="hello", .help="print Hello World!"},
     {.command="help", .help="print all available commands"},
-    {.command="kmalloc", .help="simple allocator in heap session"},
+    {.command="s_allocator", .help="simple allocator in heap session"},
     {.command="info", .help="get device information via mailbox"},
     {.command="ls", .help="list directory contents"},
     {.command="setTimeout", .help="setTimeout [MESSAGE] [SECONDS]"},
@@ -47,7 +47,14 @@ void cli_cmd_read(char* buffer)
         if ( idx >= CMD_MAX_LEN ) break;
         c = uart_async_getc();
         if ( c == '\n') break;
-        buffer[idx++] = c;
+        if ( c == 127) {
+            idx--;
+            buffer[idx] = '\0';
+            uart_sendline("\b \b");
+        }else{
+            buffer[idx++] = c;
+        }
+        
     }
 }
 
@@ -70,8 +77,8 @@ void cli_cmd_exec(char* buffer)
         do_cmd_help();
     } else if (strcmp(cmd, "info") == 0) {
         do_cmd_info();
-    } else if (strcmp(cmd, "kmalloc") == 0) {
-        do_cmd_kmalloc();
+    } else if (strcmp(cmd, "s_allocator") == 0) {
+        do_cmd_s_allocator();
     } else if (strcmp(cmd, "ls") == 0) {
         do_cmd_ls(argvs);
     } else if (strcmp(cmd, "setTimeout") == 0) {
@@ -87,9 +94,12 @@ void cli_cmd_exec(char* buffer)
 void cli_print_banner()
 {
     uart_puts("\r\n");
-    uart_puts("=======================================\r\n");
-    uart_puts("  Welcome to NYCU-OSC 2023 Lab3 Shell  \r\n");
-    uart_puts("=======================================\r\n");
+    uart_puts("   ____    _____   _____   ___    ___   ___   _  _\r\n");
+    uart_puts("  / __ \\  / ____| / ____| |__ \\  / _ \\ |__ \\ | || |\r\n");
+    uart_puts(" | |  | || (___  | |         ) || | | |   ) || || |_\r\n");
+    uart_puts(" | |  | | \\___ \\ | |        / / | | | |  / / |__   _|\r\n");
+    uart_puts(" | |__| | ____) || |____   / /_ | |_| | / /_    | | \r\n");
+    uart_puts("  \\____/ |_____/  \\_____| |____| \\___/ |____|   |_|\r\n");
 }
 
 void do_cmd_cat(char* filepath)
@@ -156,14 +166,14 @@ void do_cmd_exec(char* filepath)
         if(strcmp(c_filepath, filepath)==0)
         {
             //exec c_filedata
-            char* ustack = kmalloc(USTACK_SIZE);
+            char* ustack = s_allocator(USTACK_SIZE);
             asm("msr elr_el1, %0\n\t"   // elr_el1: Set the address to return to: c_filedata
                 "msr spsr_el1, xzr\n\t" // enable interrupt (PSTATE.DAIF) -> spsr_el1[9:6]=4b0. In Basic#1 sample, EL1 interrupt is disabled.
                 "msr sp_el0, %1\n\t"    // user program stack pointer set to new stack.
                 "eret\n\t"              // Perform exception return. EL1 -> EL0
                 :: "r" (c_filedata),
                    "r" (ustack+USTACK_SIZE));
-            free(ustack);
+            s_free(ustack);
             break;
         }
 
@@ -216,18 +226,18 @@ void do_cmd_info()
     }
 }
 
-void do_cmd_kmalloc()
+void do_cmd_s_allocator()
 {
     //test malloc
-    char* test1 = kmalloc(0x18);
+    char* test1 = s_allocator(0x18);
     memcpy(test1,"test malloc1",sizeof("test malloc1"));
     uart_puts("%s\n",test1);
 
-    char* test2 = kmalloc(0x20);
+    char* test2 = s_allocator(0x20);
     memcpy(test2,"test malloc2",sizeof("test malloc2"));
     uart_puts("%s\n",test2);
 
-    char* test3 = kmalloc(0x28);
+    char* test3 = s_allocator(0x28);
     memcpy(test3,"test malloc3",sizeof("test malloc3"));
     uart_puts("%s\n",test3);
 }
