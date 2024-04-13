@@ -1,8 +1,0 @@
-.vscode
-*.py
-build/
-*.img
-kernel.elf
-*.o
-!send_kernel.py
-*.bk
