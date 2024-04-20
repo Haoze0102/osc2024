@@ -134,18 +134,20 @@ void dtb_find_and_store_reserved_memory()
         uart_puts("traverse_device_tree : wrong magic in traverse_device_tree");
         return;
     }
-
+    // off_mem_rsvmap代表mem_rsvmap的offset, header + offset = 實際位置
     char *dt_mem_rsvmap_ptr = (char *)((char *)header + uint32_endian_big2lttle(header->off_mem_rsvmap));
     struct fdt_reserve_entry *reverse_entry = (struct fdt_reserve_entry *)dt_mem_rsvmap_ptr;
 
+    // 開始把dtb裡面有存的地址reserve起來
     while (reverse_entry->address != 0 || reverse_entry->size != 0)
     {
         unsigned long long start = uint64_endian_big2lttle(reverse_entry->address);
         unsigned long long end = uint64_endian_big2lttle(reverse_entry->size) + start;
         memory_reserve(start, end);
         reverse_entry++;
+        // reverse_entry = (struct fdt_reserve_entry *)((char *)reverse_entry + sizeof(struct fdt_reserve_entry));
     }
 
-    //also reserve device tree
+    // 把整個dtb tree也保存
     memory_reserve((unsigned long long)dtb_ptr, (unsigned long long)dtb_ptr + uint32_endian_big2lttle(header->totalsize));
 }
