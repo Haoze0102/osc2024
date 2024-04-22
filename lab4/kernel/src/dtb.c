@@ -45,7 +45,7 @@ void traverse_device_tree(void *dtb_ptr, dtb_callback callback)
     struct fdt_header* header = dtb_ptr;
     if(uint32_endian_big2lttle(header->magic) != 0xD00DFEED)
     {
-        uart_puts("traverse_device_tree : wrong magic in traverse_device_tree");
+        uart_puts("traverse_device_tree : WRONG!!!");
         return;
     }
     // https://abcamus.github.io/2016/12/28/uboot%E8%AE%BE%E5%A4%87%E6%A0%91-%E8%A7%A3%E6%9E%90%E8%BF%87%E7%A8%8B/
@@ -131,7 +131,7 @@ void dtb_find_and_store_reserved_memory()
     struct fdt_header *header = (struct fdt_header *) dtb_ptr;
     if (uint32_endian_big2lttle(header->magic) != 0xD00DFEED)
     {
-        uart_puts("traverse_device_tree : wrong magic in traverse_device_tree");
+        uart_puts("traverse_device_tree : WRONG!!!");
         return;
     }
     // off_mem_rsvmap代表mem_rsvmap的offset, header + offset = 實際位置

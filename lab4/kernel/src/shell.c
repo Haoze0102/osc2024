@@ -269,45 +269,47 @@ void do_cmd_ls(char* workdir)
 
 void do_cmd_memory_tester()
 {
-/*
-    char *p1 = kmalloc(0x820);
-    char *p2 = kmalloc(0x900);
-    char *p3 = kmalloc(0x2000);
-    char *p4 = kmalloc(0x3900);
-    kfree(p3);
-    kfree(p4);
-    kfree(p1);
-    kfree(p2);
-*/
-    char *a = kmalloc(0x10);
-    char *b = kmalloc(0x100);
-    char *c = kmalloc(0x1000);
 
-    kfree(a);
-    kfree(b);
-    kfree(c);
+    // 分配較小的記憶體( <= 0x1000)
+    char *small1 = kmalloc(0x10);  // 16 bytes
+    char *small2 = kmalloc(0x100);  // 256 bytes
+    char *small3 = kmalloc(0x1000); // 4 KB
 
-    a = kmalloc(32);
-    char *aa = kmalloc(50);
-    b = kmalloc(64);
-    char *bb = kmalloc(64);
-    c = kmalloc(128);
-    char *cc = kmalloc(129);
-    char *d = kmalloc(256);
-    char *dd = kmalloc(256);
-    char *e = kmalloc(512);
-    char *ee = kmalloc(999);
+    // 釋放
+    kfree(small1);
+    kfree(small2);
+    kfree(small3);
 
-    kfree(a);
-    kfree(aa);
-    kfree(b);
-    kfree(bb);
-    kfree(c);
-    kfree(cc);
-    kfree(dd);
-    kfree(d);
-    kfree(e);
-    kfree(ee);
+    // 分配測試不同大小的cache
+    char *s1 = kmalloc(32);
+    char *s2 = kmalloc(50);
+    char *m1 = kmalloc(128);
+    char *m2 = kmalloc(129);
+    char *l1 = kmalloc(512);
+    char *l2 = kmalloc(999);
+
+    // 分配測試8KB的記憶體
+    char *large1 = kmalloc(0x2000); // 8 KB
+    char *large2 = kmalloc(0x2000);
+    char *large3 = kmalloc(0x2000);
+    char *large4 = kmalloc(0x2000);
+    char *large5 = kmalloc(0x2000);
+    char *large6 = kmalloc(0x2000);
+
+    // 釋放
+    kfree(s1);
+    kfree(s2);
+    kfree(m1);
+    kfree(m2);
+    kfree(l1);
+    kfree(l2);
+
+    kfree(large1);
+    kfree(large2);
+    kfree(large3);
+    kfree(large4);
+    kfree(large5);
+    kfree(large6);
 }
 
 

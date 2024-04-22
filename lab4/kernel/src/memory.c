@@ -32,7 +32,7 @@ void* s_allocator(unsigned int size) {
 }
 
 void s_free(void* ptr) {
-    // TBD
+    // To do?
 }
 
 // ------ Lab4 ------
@@ -44,7 +44,7 @@ void init_allocator()
 {
     frame_array = s_allocator(BUDDY_MEMORY_PAGE_COUNT * sizeof(frame_t));
 
-    // init frame_array
+    // init frame_array, 64, 128, ..., 0x3c000
     for (int i = 0; i < BUDDY_MEMORY_PAGE_COUNT; i++)
     {
         if (i % (1 << FRAME_IDX_FINAL) == 0)
@@ -54,13 +54,13 @@ void init_allocator()
         }
     }
 
-    //init frame freelist
+    //init frame freelist 1, 2, 3, 4, 5, 6
     for (int i = FRAME_IDX_0; i <= FRAME_IDX_FINAL; i++)
     {
         INIT_LIST_HEAD(&frame_freelist[i]);
     }
 
-    //init cache list
+    //init cache list 1, 2, 3, 4, 5, 6
     for (int i = CACHE_IDX_0; i<= CACHE_IDX_FINAL; i++)
     {
         INIT_LIST_HEAD(&cache_list[i]);
@@ -100,7 +100,7 @@ void* page_malloc(unsigned int size)
 {
     uart_sendline("    [+] Allocate page - size : %d(0x%x)\r\n", size, size);
     uart_sendline("        Before\r\n");
-    dump_page_info();
+    show_page_info();
 
     // 用val來儲存size在所有index裡面的級距
     int val;
@@ -145,15 +145,17 @@ void* page_malloc(unsigned int size)
     list_del_entry((struct list_head *)target_frame_ptr);
 
     // Release redundant memory block to separate into pieces
-    for (int j = target_val; j > val; j--) // ex: 10000 -> 01111
+    // ex: target = 5, val = 3
+    // 00001 -> 00110
+    for (int j = target_val; j > val; j--) 
     {
-        release_redundant(target_frame_ptr);
+        split_frame(target_frame_ptr);
     }
     // 把目標frame改為ALLOCATED
     target_frame_ptr->used = FRAME_ALLOCATED;
     uart_sendline("        physical address : 0x%x\n", BUDDY_MEMORY_BASE + (PAGESIZE*(target_frame_ptr->idx)));
     uart_sendline("        After\r\n");
-    dump_page_info();
+    show_page_info();
 
     return (void *) BUDDY_MEMORY_BASE + (PAGESIZE * (target_frame_ptr->idx));
 }
@@ -164,15 +166,15 @@ void page_free(void* ptr)
     frame_t *target_frame_ptr = &frame_array[((unsigned long long)ptr - BUDDY_MEMORY_BASE) >> 12]; // MAX_PAGES * 64bit -> 0x1000 * 0x10000000
     uart_sendline("    [+] Free page: 0x%x, val = %d\r\n",ptr, target_frame_ptr->val);
     uart_sendline("        Before\r\n");
-    dump_page_info();
+    show_page_info();
     target_frame_ptr->used = FRAME_FREE;
-    while(coalesce(target_frame_ptr)==0); // merge buddy iteratively
+    while(coalesce(target_frame_ptr) == 0); // merge buddy iteratively
     list_add(&target_frame_ptr->listhead, &frame_freelist[target_frame_ptr->val]);
     uart_sendline("        After\r\n");
-    dump_page_info();
+    show_page_info();
 }
 
-frame_t* release_redundant(frame_t *frame)
+frame_t* split_frame(frame_t *frame)
 {
     // 先將自身的val - 1 , 然後接著找鄰近的buddy 
     frame->val -= 1;
@@ -192,25 +194,31 @@ frame_t* get_buddy(frame_t *frame)
 int coalesce(frame_t *frame_ptr)
 {
     frame_t *buddy = get_buddy(frame_ptr);
-    // frame is the boundary
-    if (frame_ptr->val == FRAME_IDX_FINAL)
+    // 當前已是最大值6
+    if (frame_ptr->val == FRAME_IDX_FINAL){
+        uart_sendline("    coalesce FAIL : current frame have max frame index\n");
         return -1;
+    }
 
-    // Order must be the same: 2**i + 2**i = 2**(i+1)
-    if (frame_ptr->val != buddy->val)
+    // buddy的val不同
+    if (frame_ptr->val != buddy->val){
+        uart_sendline("    coalesce FAIL : buddy val different\n");
         return -1;
+    }
 
-    // buddy is in used
-    if (buddy->used == FRAME_ALLOCATED)
+    // buddy是已使用的狀態
+    if (buddy->used == FRAME_ALLOCATED){
+        uart_sendline("    coalesce FAIL : buddy has been allocated\n");
         return -1;
+    }
 
     list_del_entry((struct list_head *)buddy);
     frame_ptr->val += 1;
-    uart_sendline("    coalesce detected, merging 0x%x, 0x%x, -> val = %d\r\n", frame_ptr->idx, buddy->idx, frame_ptr->val);
+    uart_sendline("    coalesce SUCESS : merging 0x%x, 0x%x, -> val = %d\r\n", frame_ptr->idx, buddy->idx, frame_ptr->val);
     return 0;
 }
 
-void dump_page_info(){
+void show_page_info(){
     unsigned int exp2 = 1;
     uart_sendline("        ----------------- [  Number of Available Page Blocks  ] -----------------\r\n        | ");
     for (int i = FRAME_IDX_0; i <= FRAME_IDX_FINAL; i++)
@@ -224,7 +232,7 @@ void dump_page_info(){
     uart_sendline("|\r\n");
 }
 
-void dump_cache_info()
+void show_cache_info()
 {
     unsigned int exp2 = 1;
     uart_sendline("    -- [  Number of Available Cache Blocks ] --\r\n    | ");
@@ -239,7 +247,7 @@ void dump_cache_info()
     uart_sendline("|\r\n");
 }
 
-void page2caches(int order)
+void convert_page_to_caches(int order)
 {
     // make caches from a smallest-size page (0x1000)
     char *page = page_malloc(PAGESIZE);
@@ -261,7 +269,7 @@ void* cache_malloc(unsigned int size)
 {
     uart_sendline("[+] Allocate cache - size : %d(0x%x)\r\n", size, size);
     uart_sendline("    Before\r\n");
-    dump_cache_info();
+    show_cache_info();
     int order;
     // 32 << 0 = 0x20
     // 32 << 1 = 0x40
@@ -274,14 +282,14 @@ void* cache_malloc(unsigned int size)
     // 若沒有可用的cache_list 就去page切一塊來用
     if (list_empty(&cache_list[order]))
     {
-        page2caches(order);
+        convert_page_to_caches(order);
     }
     // 此時已確定有cahe_list可用
     list_head_t* r = cache_list[order].next;
     list_del_entry(r);
     uart_sendline("    physical address : 0x%x\n", r);
     uart_sendline("    After\r\n");
-    dump_cache_info();
+    show_cache_info();
     return r;
 }
 
@@ -291,10 +299,10 @@ void cache_free(void *ptr)
     frame_t *pageframe_ptr = &frame_array[((unsigned long long)ptr - BUDDY_MEMORY_BASE) >> 12];
     uart_sendline("[+] Free cache: 0x%x, val = %d\r\n",ptr, pageframe_ptr->cache_order);
     uart_sendline("    Before\r\n");
-    dump_cache_info();
+    show_cache_info();
     list_add(c, &cache_list[pageframe_ptr->cache_order]);
     uart_sendline("    After\r\n");
-    dump_cache_info();
+    show_cache_info();
 }
 
 void *kmalloc(unsigned int size)
@@ -349,17 +357,17 @@ void memory_reserve(unsigned long long start, unsigned long long end)
             // 取得此frame的pyhsical address的起始和結尾
             unsigned long long pagestart = ((frame_t *)pos)->idx * PAGESIZE + BUDDY_MEMORY_BASE;
             unsigned long long pageend = pagestart + (PAGESIZE << order);
-
+    
             if (start <= pagestart && end >= pageend) // 整個page都在reserved memory內，從freelist刪掉
             {
                 ((frame_t *)pos)->used = FRAME_ALLOCATED;
                 uart_sendline("    [!] Reserved page in 0x%x - 0x%x\n", pagestart, pageend);
                 uart_sendline("        Before\n");
-                dump_page_info();
+                show_page_info();
                 list_del_entry(pos);
                 uart_sendline("        Remove usable block for reserved memory: order %d\r\n", order);
                 uart_sendline("        After\n");
-                dump_page_info();
+                show_page_info();
             }
             else if (start >= pageend || end <= pagestart) // 沒有重疊的memory
             {
@@ -370,8 +378,8 @@ void memory_reserve(unsigned long long start, unsigned long long end)
                 list_del_entry(pos);
                 list_head_t *temppos = pos -> prev;
                 // 1. 先把自身的val - 1並加入到freelist
-                // 2. 用release_redundant內的get_buddy(切一半且val - 1)，並把切完的加到freelist
-                list_add(&release_redundant((frame_t *)pos)->listhead, &frame_freelist[order - 1]);
+                // 2. 用split_frame內的get_buddy(切一半且val - 1)，並把切完的加到freelist
+                list_add(&split_frame((frame_t *)pos)->listhead, &frame_freelist[order - 1]);
                 pos = temppos;
             }
         }

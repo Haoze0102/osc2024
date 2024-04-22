@@ -48,17 +48,17 @@ typedef struct frame
 } frame_t;
 
 void init_allocator();
-frame_t *release_redundant(frame_t *frame);
+frame_t *split_frame(frame_t *frame);
 frame_t *get_buddy(frame_t *frame);
 int coalesce(frame_t *frame_ptr);
 
-void dump_page_info();
-void dump_cache_info();
+void show_page_info();
+void show_cache_info();
 
 //buddy system
 void* page_malloc(unsigned int size);
 void  page_free(void *ptr);
-void  page2caches(int order);
+void  convert_page_to_caches(int order);
 void* cache_malloc(unsigned int size);
 void  cache_free(void* ptr);
 
