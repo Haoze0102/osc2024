@@ -25,9 +25,9 @@ struct CLI_CMDS cmd_list[CLI_MAX_CMD]=
     {.command="s_allocator", .help="simple allocator in heap session"},
     {.command="info", .help="get device information via mailbox"},
     {.command="ls", .help="list directory contents"},
-    {.command="memory_tester", .help="memory testcase generator, allocate and free"},
+    {.command="buddy", .help="memory testcase generator, allocate and free"},
     {.command="setTimeout", .help="setTimeout [MESSAGE] [SECONDS]"},
-    {.command="set2sAlert", .help="set core timer interrupt every 2 second"},
+    {.command="timer", .help="set core timer interrupt every 2 second"},
     {.command="reboot", .help="reboot the device"}
 };
 
@@ -82,7 +82,7 @@ void cli_cmd_exec(char* buffer)
         do_cmd_s_allocator();
     } else if (strcmp(cmd, "ls") == 0) {
         do_cmd_ls(argvs);
-    } else if (strcmp(cmd, "memory_tester") == 0) {
+    } else if (strcmp(cmd, "buddy") == 0) {
         do_cmd_memory_tester();
     } else if (strcmp(cmd, "setTimeout") == 0) {
         char* sec = str_SepbySpace(argvs);

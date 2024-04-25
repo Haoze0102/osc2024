@@ -35,33 +35,33 @@ void s_free(void* ptr) {
     // To do?
 }
 
-// ------ Lab4 ------
+// ------ Lab4 allocator------
 static frame_t*           frame_array; // stores whole physical address frame's statement and index
-static list_head_t        frame_freelist[FRAME_MAX_IDX]; // store available block for frame(use linklist)
-static list_head_t        cache_list[CACHE_MAX_IDX]; // store available block for cache(use linklist)
+static list_head_t        frame_freelist[FRAME_INDEX_MAX ]; // store available block for frame(use linklist)
+static list_head_t        cache_list[CACHE_INDEX_MAX ]; // store available block for cache(use linklist)
 
 void init_allocator()
 {
     frame_array = s_allocator(BUDDY_MEMORY_PAGE_COUNT * sizeof(frame_t));
 
-    // init frame_array, 64, 128, ..., 0x3c000
+    // init frame_array 0, 64, 128, ..., 0x3c000
     for (int i = 0; i < BUDDY_MEMORY_PAGE_COUNT; i++)
     {
-        if (i % (1 << FRAME_IDX_FINAL) == 0)
+        if (i % (1 << FRAME_INDEX_FINAL) == 0)
         {
-            frame_array[i].val = FRAME_IDX_FINAL;
-            frame_array[i].used = FRAME_FREE;
+            frame_array[i].val = FRAME_INDEX_FINAL;
+            frame_array[i].used = FRAME_STATUS_FREE;
         }
     }
 
     //init frame freelist 1, 2, 3, 4, 5, 6
-    for (int i = FRAME_IDX_0; i <= FRAME_IDX_FINAL; i++)
+    for (int i = FRAME_INDEX_0; i <= FRAME_INDEX_FINAL; i++)
     {
         INIT_LIST_HEAD(&frame_freelist[i]);
     }
 
     //init cache list 1, 2, 3, 4, 5, 6
-    for (int i = CACHE_IDX_0; i<= CACHE_IDX_FINAL; i++)
+    for (int i = CACHE_INDEX_0; i<= CACHE_INDEX_FINAL; i++)
     {
         INIT_LIST_HEAD(&cache_list[i]);
     }
@@ -71,16 +71,17 @@ void init_allocator()
         //init listhead for each frame
         INIT_LIST_HEAD(&frame_array[i].listhead);
         frame_array[i].idx = i;
-        frame_array[i].cache_order = CACHE_NONE;
+        frame_array[i].cache_order = CACHE_STATUS_NONE;
 
         //add init frame into freelist
-        if (i % (1 << FRAME_IDX_FINAL) == 0)
+        if (i % (1 << FRAME_INDEX_FINAL) == 0)
         {
-            list_add(&frame_array[i].listhead, &frame_freelist[FRAME_IDX_FINAL]);
+            list_add(&frame_array[i].listhead, &frame_freelist[FRAME_INDEX_FINAL]);
         }
     }
-
-    /* should reserve these memory region
+    uart_sendline("        physical address : 0x%x\n", BUDDY_MEMORY_BASE + (PAGESIZE*(frame_array[0].idx)));
+    uart_sendline("        physical address : 0x%x\n", BUDDY_MEMORY_BASE + (PAGESIZE*(frame_array[1].idx)));
+    /* Below are the memory regions that have to be reserved
     Spin tables for multicore boot (0x0000 - 0x1000)
     Devicetree (Optional, if you have implement it)
     Kernel image in the physical memory
@@ -104,7 +105,7 @@ void* page_malloc(unsigned int size)
 
     // 用val來儲存size在所有index裡面的級距
     int val;
-    for (int i = FRAME_IDX_0; i <= FRAME_IDX_FINAL; i++)
+    for (int i = FRAME_INDEX_0; i <= FRAME_INDEX_FINAL; i++)
     {
 
         // PAGESIZE << 0 = 0x1000
@@ -118,7 +119,7 @@ void* page_malloc(unsigned int size)
             break;
         }
 
-        if ( i == FRAME_IDX_FINAL)
+        if ( i == FRAME_INDEX_FINAL)
         {
             uart_puts("[!] request size exceeded for page_malloc!!!!\r\n");
             return (void*)0;
@@ -128,14 +129,14 @@ void* page_malloc(unsigned int size)
 
     // find the smallest larger frame in freelist
     int target_val;
-    for (target_val = val; target_val <= FRAME_IDX_FINAL; target_val++)
+    for (target_val = val; target_val <= FRAME_INDEX_FINAL; target_val++)
     {
         // freelist does not have 2**i order frame, going for next order
         if (!list_empty(&frame_freelist[target_val]))
             break;
     }
 
-    if (target_val > FRAME_IDX_FINAL)
+    if (target_val > FRAME_INDEX_FINAL)
     {
         uart_puts("[!] No available frame in freelist, page_malloc ERROR!!!!\r\n");
         return (void*)0;
@@ -149,11 +150,13 @@ void* page_malloc(unsigned int size)
     // 00001 -> 00110
     for (int j = target_val; j > val; j--) 
     {
+        uart_sendline("        split 0x%x ~ 0x%x\n", BUDDY_MEMORY_BASE + (PAGESIZE*(target_frame_ptr->idx)), BUDDY_MEMORY_BASE + ((PAGESIZE*(target_frame_ptr->idx))+(PAGESIZE<<target_frame_ptr->val)));
         split_frame(target_frame_ptr);
     }
     // 把目標frame改為ALLOCATED
-    target_frame_ptr->used = FRAME_ALLOCATED;
+    target_frame_ptr->used = FRAME_STATUS_ALLOCATED;
     uart_sendline("        physical address : 0x%x\n", BUDDY_MEMORY_BASE + (PAGESIZE*(target_frame_ptr->idx)));
+    uart_sendline("        The number of times to allocate a page : %d\r\n", target_val - val);
     uart_sendline("        After\r\n");
     show_page_info();
 
@@ -167,7 +170,7 @@ void page_free(void* ptr)
     uart_sendline("    [+] Free page: 0x%x, val = %d\r\n",ptr, target_frame_ptr->val);
     uart_sendline("        Before\r\n");
     show_page_info();
-    target_frame_ptr->used = FRAME_FREE;
+    target_frame_ptr->used = FRAME_STATUS_FREE;
     while(coalesce(target_frame_ptr) == 0); // merge buddy iteratively
     list_add(&target_frame_ptr->listhead, &frame_freelist[target_frame_ptr->val]);
     uart_sendline("        After\r\n");
@@ -178,15 +181,17 @@ frame_t* split_frame(frame_t *frame)
 {
     // 先將自身的val - 1 , 然後接著找鄰近的buddy 
     frame->val -= 1;
+    uart_sendline("            to 0x%x ~ 0x%x", BUDDY_MEMORY_BASE + (PAGESIZE*(frame->idx)), BUDDY_MEMORY_BASE + ((PAGESIZE*(frame->idx))+(PAGESIZE<<frame->val)));
     frame_t *buddyptr = get_buddy(frame);
     buddyptr->val = frame->val;
+    uart_sendline(" and 0x%x ~ 0x%x\n", BUDDY_MEMORY_BASE + (PAGESIZE*(buddyptr->idx)), BUDDY_MEMORY_BASE + ((PAGESIZE*(buddyptr->idx))+(PAGESIZE<<buddyptr->val)));
     list_add(&buddyptr->listhead, &frame_freelist[buddyptr->val]);
     return frame;
 }
 
 frame_t* get_buddy(frame_t *frame)
 {
-    // XOR(idx, order)
+    // XOR(INDEX, order)
     // ex. frame->idx ^ (1 << frame->val) -> 63 ^ (1<<4) = 47
     return &frame_array[frame->idx ^ (1 << frame->val)];
 }
@@ -195,7 +200,7 @@ int coalesce(frame_t *frame_ptr)
 {
     frame_t *buddy = get_buddy(frame_ptr);
     // 當前已是最大值6
-    if (frame_ptr->val == FRAME_IDX_FINAL){
+    if (frame_ptr->val == FRAME_INDEX_FINAL){
         uart_sendline("    coalesce FAIL : current frame have max frame index\n");
         return -1;
     }
@@ -207,7 +212,7 @@ int coalesce(frame_t *frame_ptr)
     }
 
     // buddy是已使用的狀態
-    if (buddy->used == FRAME_ALLOCATED){
+    if (buddy->used == FRAME_STATUS_ALLOCATED){
         uart_sendline("    coalesce FAIL : buddy has been allocated\n");
         return -1;
     }
@@ -221,13 +226,13 @@ int coalesce(frame_t *frame_ptr)
 void show_page_info(){
     unsigned int exp2 = 1;
     uart_sendline("        ----------------- [  Number of Available Page Blocks  ] -----------------\r\n        | ");
-    for (int i = FRAME_IDX_0; i <= FRAME_IDX_FINAL; i++)
+    for (int i = FRAME_INDEX_0; i <= FRAME_INDEX_FINAL; i++)
     {
         uart_sendline("%4dKB(%1d) ", 4*exp2, i);
         exp2 *= 2;
     }
     uart_sendline("|\r\n        | ");
-    for (int i = FRAME_IDX_0; i <= FRAME_IDX_FINAL; i++)
+    for (int i = FRAME_INDEX_0; i <= FRAME_INDEX_FINAL; i++)
         uart_sendline("     %4d ", list_size(&frame_freelist[i]));
     uart_sendline("|\r\n");
 }
@@ -236,13 +241,13 @@ void show_cache_info()
 {
     unsigned int exp2 = 1;
     uart_sendline("    -- [  Number of Available Cache Blocks ] --\r\n    | ");
-    for (int i = CACHE_IDX_0; i <= CACHE_IDX_FINAL; i++)
+    for (int i = CACHE_INDEX_0; i <= CACHE_INDEX_FINAL; i++)
     {
         uart_sendline("%4dB(%1d) ", 32*exp2, i);
         exp2 *= 2;
     }
     uart_sendline("|\r\n    | ");
-    for (int i = CACHE_IDX_0; i <= CACHE_IDX_FINAL; i++)
+    for (int i = CACHE_INDEX_0; i <= CACHE_INDEX_FINAL; i++)
         uart_sendline("   %5d ", list_size(&cache_list[i]));
     uart_sendline("|\r\n");
 }
@@ -275,7 +280,7 @@ void* cache_malloc(unsigned int size)
     // 32 << 1 = 0x40
     // 32 << 2 = 0x80
     //...
-    for (int i = CACHE_IDX_0; i <= CACHE_IDX_FINAL; i++)
+    for (int i = CACHE_INDEX_0; i <= CACHE_INDEX_FINAL; i++)
     {
         if (size <= (32 << i)) { order = i; break; }
     }
@@ -312,7 +317,7 @@ void *kmalloc(unsigned int size)
     uart_sendline("[+] Request kmalloc size: %d\r\n", size);
     uart_sendline("================================\r\n");
     //For page
-    if (size > (32 << CACHE_IDX_FINAL))
+    if (size > (32 << CACHE_INDEX_FINAL))
     {
         void *r = page_malloc(size);
         return r;
@@ -329,7 +334,7 @@ void kfree(void *ptr)
     uart_sendline("==========================\r\n");
     // For page
     // 確保ptr是以page為單位
-    if ((unsigned long long)ptr % PAGESIZE == 0 && frame_array[((unsigned long long)ptr - BUDDY_MEMORY_BASE) >> 12].cache_order == CACHE_NONE)
+    if ((unsigned long long)ptr % PAGESIZE == 0 && frame_array[((unsigned long long)ptr - BUDDY_MEMORY_BASE) >> 12].cache_order == CACHE_STATUS_NONE)
     {
         page_free(ptr);
         return;
@@ -347,8 +352,8 @@ void memory_reserve(unsigned long long start, unsigned long long end)
     uart_sendline("end 0x%x\r\n",end);
 
     // delete page from freelist
-    // 從IDX6開始往下檢查
-    for (int order = FRAME_IDX_FINAL; order >= 0; order--)
+    // 從INDEX6開始往下檢查
+    for (int order = FRAME_INDEX_FINAL; order >= 0; order--)
     {
         list_head_t *pos;
         // 依序檢查free_list內的frame page
@@ -360,7 +365,7 @@ void memory_reserve(unsigned long long start, unsigned long long end)
     
             if (start <= pagestart && end >= pageend) // 整個page都在reserved memory內，從freelist刪掉
             {
-                ((frame_t *)pos)->used = FRAME_ALLOCATED;
+                ((frame_t *)pos)->used = FRAME_STATUS_ALLOCATED;
                 uart_sendline("    [!] Reserved page in 0x%x - 0x%x\n", pagestart, pageend);
                 uart_sendline("        Before\n");
                 show_page_info();

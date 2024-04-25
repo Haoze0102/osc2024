@@ -14,28 +14,31 @@ void  s_free(void* ptr);
 #define MAX_PAGES   0x10000    // 65536 (Entries), PAGESIZE * MAX_PAGES = 0x10000000 (SPEC)
 
 typedef enum {
-    FRAME_FREE = -2,
-    FRAME_ALLOCATED,
-    FRAME_IDX_0 = 0,      //  0x1000
-    FRAME_IDX_1,          //  0x2000
-    FRAME_IDX_2,          //  0x4000
-    FRAME_IDX_3,          //  0x8000
-    FRAME_IDX_4,          // 0x10000
-    FRAME_IDX_5,          // 0x20000
-    FRAME_IDX_FINAL = 6,  // 0x40000
-    FRAME_MAX_IDX = 7
+    FRAME_STATUS_FREE = -2,  // Indicates the frame is free
+    FRAME_STATUS_ALLOCATED,  // Indicates the frame is allocated
+
+    FRAME_INDEX_0 = 0,      // 4KB
+    FRAME_INDEX_1,          // 8KB
+    FRAME_INDEX_2,          // 16KB
+    FRAME_INDEX_3,          // 32KB
+    FRAME_INDEX_4,          // 64KB
+    FRAME_INDEX_5,          // 128KB
+    FRAME_INDEX_6,          // 256KB
+    FRAME_INDEX_FINAL = 7,  // 512KB
+    FRAME_INDEX_MAX = 8     // Maximum index count
 } frame_value_type;
 
 typedef enum {
-    CACHE_NONE = -1,     // Cache not used
-    CACHE_IDX_0 = 0,     //  0x20
-    CACHE_IDX_1,         //  0x40
-    CACHE_IDX_2,         //  0x80
-    CACHE_IDX_3,         // 0x100
-    CACHE_IDX_4,         // 0x200
-    CACHE_IDX_5,         // 0x400
-    CACHE_IDX_FINAL = 6, // 0x800
-    CACHE_MAX_IDX = 7
+    CACHE_STATUS_NONE = -1,  // Indicates the cache is not used
+
+    CACHE_INDEX_0 = 0,      // 32B
+    CACHE_INDEX_1,          // 64B
+    CACHE_INDEX_2,          // 128B
+    CACHE_INDEX_3,          // 256B
+    CACHE_INDEX_4,          // 512B
+    CACHE_INDEX_5,          // 1KB
+    CACHE_INDEX_FINAL = 6,  // 2KB
+    CACHE_INDEX_MAX = 7     // Maximum index count
 } cache_value_type;
 
 typedef struct frame
