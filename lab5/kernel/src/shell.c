@@ -8,10 +8,11 @@
 #include "dtb.h"
 #include "memory.h"
 #include "timer.h"
+#include "schedule.h"
 
-#define CLI_MAX_CMD 12
-#define USTACK_SIZE 0x10000
+#define CLI_MAX_CMD 13
 
+extern int   uart_recv_echo_flag;
 extern char* dtb_ptr;
 extern void* CPIO_DEFAULT_START;
 
@@ -28,7 +29,8 @@ struct CLI_CMDS cmd_list[CLI_MAX_CMD]=
     {.command="buddy", .help="memory testcase generator, allocate and free"},
     {.command="setTimeout", .help="setTimeout [MESSAGE] [SECONDS]"},
     {.command="timer", .help="set core timer interrupt every 2 second"},
-    {.command="reboot", .help="reboot the device"}
+    {.command="reboot", .help="reboot the device"},
+    {.command="thread", .help="thread tester with dummy function - foo()"}
 };
 
 void cli_cmd_clear(char* buffer, int length)
@@ -78,6 +80,8 @@ void cli_cmd_exec(char* buffer)
         do_cmd_help();
     } else if (strcmp(cmd, "info") == 0) {
         do_cmd_info();
+    } else if (strcmp(cmd, "thread") == 0) {
+        do_cmd_thread_tester();
     } else if (strcmp(cmd, "s_allocator") == 0) {
         do_cmd_s_allocator();
     } else if (strcmp(cmd, "ls") == 0) {
@@ -168,16 +172,8 @@ void do_cmd_exec(char* filepath)
 
         if(strcmp(c_filepath, filepath)==0)
         {
-            //exec c_filedata
-            char* ustack = s_allocator(USTACK_SIZE);
-            asm("msr elr_el1, %0\n\t"   // elr_el1: Set the address to return to: c_filedata
-                "msr spsr_el1, xzr\n\t" // enable interrupt (PSTATE.DAIF) -> spsr_el1[9:6]=4b0. In Basic#1 sample, EL1 interrupt is disabled.
-                "msr sp_el0, %1\n\t"    // user program stack pointer set to new stack.
-                "eret\n\t"              // Perform exception return. EL1 -> EL0
-                :: "r" (c_filedata),
-                   "r" (ustack+USTACK_SIZE));
-            s_free(ustack);
-            break;
+            uart_recv_echo_flag = 0; // syscall.img has different mechanism on uart I/O.
+            exec_thread(c_filedata, c_filesize);
         }
 
         //if this is TRAILER!!! (last of file)
@@ -243,6 +239,15 @@ void do_cmd_s_allocator()
     char* test3 = s_allocator(0x28);
     memcpy(test3,"test malloc3",sizeof("test malloc3"));
     uart_puts("%s\n",test3);
+}
+
+void do_cmd_thread_tester()
+{
+    for (int i = 0; i < 5; ++i)
+    { // N should > 2
+        thread_create(foo);
+    }
+    idle();
 }
 
 void do_cmd_ls(char* workdir)
@@ -315,12 +320,12 @@ void do_cmd_memory_tester()
 
 void do_cmd_setTimeout(char* msg, char* sec)
 {
-    add_timer(uart_sendline,atoi(sec),msg);
+    add_timer(uart_sendline, atoi(sec), msg, 0);
 }
 
 void do_cmd_set2sAlert()
 {
-    add_timer(timer_set2sAlert,2,"2sAlert");
+    add_timer(timer_set2sAlert, 2, "2sAlert", 0);
 }
 
 void do_cmd_reboot()

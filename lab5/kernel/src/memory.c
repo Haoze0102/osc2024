@@ -156,7 +156,7 @@ void* page_malloc(unsigned int size)
     // 00001 -> 00110
     for (int j = target_val; j > val; j--) 
     {
-        uart_sendline("        split 0x%x ~ 0x%x\n", BUDDY_MEMORY_BASE + (PAGESIZE*(target_frame_ptr->idx)), BUDDY_MEMORY_BASE + ((PAGESIZE*(target_frame_ptr->idx))+(PAGESIZE<<target_frame_ptr->val)));
+        //uart_sendline("        split 0x%x ~ 0x%x\n", BUDDY_MEMORY_BASE + (PAGESIZE*(target_frame_ptr->idx)), BUDDY_MEMORY_BASE + ((PAGESIZE*(target_frame_ptr->idx))+(PAGESIZE<<target_frame_ptr->val)));
         split_frame(target_frame_ptr);
     }
     // 把目標frame改為ALLOCATED
@@ -187,10 +187,10 @@ frame_t* split_frame(frame_t *frame)
 {
     // 先將自身的val - 1 , 然後接著找鄰近的buddy 
     frame->val -= 1;
-    memory_sendline("            to 0x%x ~ 0x%x", BUDDY_MEMORY_BASE + (PAGESIZE*(frame->idx)), BUDDY_MEMORY_BASE + ((PAGESIZE*(frame->idx))+(PAGESIZE<<frame->val)));
+    //memory_sendline("            to 0x%x ~ 0x%x", BUDDY_MEMORY_BASE + (PAGESIZE*(frame->idx)), BUDDY_MEMORY_BASE + ((PAGESIZE*(frame->idx))+(PAGESIZE<<frame->val)));
     frame_t *buddyptr = get_buddy(frame);
     buddyptr->val = frame->val;
-    memory_sendline(" and 0x%x ~ 0x%x\n", BUDDY_MEMORY_BASE + (PAGESIZE*(buddyptr->idx)), BUDDY_MEMORY_BASE + ((PAGESIZE*(buddyptr->idx))+(PAGESIZE<<buddyptr->val)));
+    //memory_sendline(" and 0x%x ~ 0x%x\n", BUDDY_MEMORY_BASE + (PAGESIZE*(buddyptr->idx)), BUDDY_MEMORY_BASE + ((PAGESIZE*(buddyptr->idx))+(PAGESIZE<<buddyptr->val)));
     list_add(&buddyptr->listhead, &frame_freelist[buddyptr->val]);
     return frame;
 }
@@ -207,25 +207,25 @@ int coalesce(frame_t *frame_ptr)
     frame_t *buddy = get_buddy(frame_ptr);
     // 當前已是最大值6
     if (frame_ptr->val == FRAME_INDEX_FINAL){
-        uart_sendline("    coalesce FAIL : current frame have max frame index\n");
+        //uart_sendline("    coalesce FAIL : current frame have max frame index\n");
         return -1;
     }
 
     // buddy的val不同
     if (frame_ptr->val != buddy->val){
-        uart_sendline("    coalesce FAIL : buddy val different\n");
+        //uart_sendline("    coalesce FAIL : buddy val different\n");
         return -1;
     }
 
     // buddy是已使用的狀態
     if (buddy->used == FRAME_STATUS_ALLOCATED){
-        uart_sendline("    coalesce FAIL : buddy has been allocated\n");
+        //uart_sendline("    coalesce FAIL : buddy has been allocated\n");
         return -1;
     }
 
     list_del_entry((struct list_head *)buddy);
     frame_ptr->val += 1;
-    memory_sendline("    coalesce SUCESS : merging 0x%x, 0x%x, -> val = %d\r\n", frame_ptr->idx, buddy->idx, frame_ptr->val);
+    //memory_sendline("    coalesce SUCESS : merging 0x%x, 0x%x, -> val = %d\r\n", frame_ptr->idx, buddy->idx, frame_ptr->val);
     return 0;
 }
 
