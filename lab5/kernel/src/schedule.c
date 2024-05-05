@@ -3,10 +3,9 @@
 #include "exception.h"
 #include "memory.h"
 #include "timer.h"
+#include "signal.h"
 
 list_head_t *run_queue;
-list_head_t *wait_queue;
-list_head_t *zombie_queue;
 
 thread_t threads[PIDMAX + 1];
 thread_t *curr_thread;
@@ -17,11 +16,7 @@ void init_thread_sched()
 {
     //el1_interrupt_disable();
     run_queue = kmalloc(sizeof(list_head_t));
-    wait_queue = kmalloc(sizeof(list_head_t));
-    zombie_queue = kmalloc(sizeof(list_head_t));
     INIT_LIST_HEAD(run_queue);
-    INIT_LIST_HEAD(wait_queue);
-    INIT_LIST_HEAD(zombie_queue);
 
     //init pids
     for (int i = 0; i <= PIDMAX; i++)
@@ -68,14 +63,14 @@ void kill_zombies(){
     {
         if (((thread_t *)curr)->iszombie)
         {
-            list_head_t *prev_curr = curr->prev;
+            // list_head_t *prev_curr = curr->prev;
             list_del_entry(curr);
             kfree(((thread_t *)curr)->stack_alloced_ptr);        // free stack
             kfree(((thread_t *)curr)->kernel_stack_alloced_ptr); // free stack
             //kfree(((thread_t *)curr)->data); // free data (don't free data because of fork)
             ((thread_t *)curr)->iszombie = 0;
             ((thread_t *)curr)->isused = 0;
-            curr = prev_curr;
+            //curr = prev_curr;
         }
     }
     //el1_interrupt_enable();
@@ -120,7 +115,7 @@ thread_t *thread_create(void *start)
             break;
         }
     }
-    uart_sendline("Thread create : %d\n", r->pid);
+    //uart_sendline("Thread create : %d\n", r->pid);
     r->iszombie = 0; // Initialize to indicate the thread is not a zombie.
     r->isused = 1; // Mark the thread as used.
     r->context.lr = (unsigned long long)start; // Set the link register to the start function, defining the entry point for this thread.
@@ -130,17 +125,24 @@ thread_t *thread_create(void *start)
     r->kernel_stack_alloced_ptr = kmalloc(KSTACK_SIZE);
     // The stack pointer should point to the top of the stack, so we add `USTACK_SIZE` to the base pointer.
     r->context.sp = (unsigned long long)r->stack_alloced_ptr + USTACK_SIZE;
-
     // Set the frame pointer (fp) to the top of the stack. This is typically used for stack frame linkage.
     r->context.fp = r->context.sp;
 
+    // Advanced 1 POSIX signal
+    r->signal_inProcess = 0;
+    //initial signal handler with signal_default_handler (kill thread)
+    for (int i = 0; i < SIGNAL_MAX;i++)
+    {
+        r->signal_handler[i] = signal_default_handler;
+        r->sigcount[i] = 0;
+    }
     list_add(&r->listhead, run_queue);
     //el1_interrupt_enable();
     return r;
 }
 
 void thread_exit(){
-    uart_sendline("Thread PID %d exit \n", curr_thread->pid);
+    //uart_sendline("Thread PID %d exit \n", curr_thread->pid);
     // el1_interrupt_disable();
     // list_del_entry(&curr_thread->listhead);
     curr_thread->iszombie = 1;
