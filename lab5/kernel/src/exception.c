@@ -58,6 +58,8 @@ void el1h_irq_router(trapframe_t *tpf){
 
 void el0_sync_router(trapframe_t *tpf){
 
+    // Basic #3 - Based on System Call Format in Video Player’s Test Program
+    // Allow UART input during exception
     el1_interrupt_enable();
     /*
     A system call is issued using the svc #0 instruction. 

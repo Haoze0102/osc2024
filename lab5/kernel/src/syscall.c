@@ -54,17 +54,12 @@ int exec(trapframe_t *tpf, const char *name, char *const argv[])
         curr_thread->data[i] = new_data[i];
     }
 
-    //clear signal handler
+    //inital signal handler
     for (int i = 0; i <= SIGNAL_MAX; i++)
     {
         curr_thread->signal_handler[i] = signal_default_handler;
     }
 
-    /*
-    __asm__ __volatile__("mov sp, %0\n\t" ::"r"(curr_thread->stack_alloced_ptr + USTACK_SIZE));
-    __asm__ __volatile__("msr elr_el1, %0\n\t" ::"r"(curr_thread->data));
-    __asm__ __volatile__("eret\n\t");
-    */
     tpf->elr_el1 = (unsigned long) curr_thread->data;
     tpf->sp_el0 = (unsigned long)curr_thread->stack_alloced_ptr + USTACK_SIZE;
     tpf->x0 = 0;
@@ -73,7 +68,6 @@ int exec(trapframe_t *tpf, const char *name, char *const argv[])
 
 int fork(trapframe_t *tpf)
 {
-    el1_interrupt_enable();
     thread_t *newt = thread_create(curr_thread->data);
     newt->datasize = curr_thread->datasize;
 
@@ -86,7 +80,7 @@ int fork(trapframe_t *tpf)
 
 
     int parent_pid = curr_thread->pid;
-    thread_t *parent_thread_t = curr_thread;
+    thread_t *parent_thread = curr_thread;
 
     //copy user stack into new process
     for (int i = 0; i < USTACK_SIZE; i++)
@@ -109,18 +103,20 @@ int fork(trapframe_t *tpf)
     }
 
     newt->context = curr_thread->context;
-    newt->context.fp += newt->kernel_stack_alloced_ptr - curr_thread->kernel_stack_alloced_ptr; // move fp
-    newt->context.sp += newt->kernel_stack_alloced_ptr - curr_thread->kernel_stack_alloced_ptr; // move kernel sp
-    el1_interrupt_disable();
+    // the offset of current(parent) syscall should also be updated to new cpu context from parent offset
+    newt->context.fp += newt->kernel_stack_alloced_ptr - curr_thread->kernel_stack_alloced_ptr;
+    newt->context.sp += newt->kernel_stack_alloced_ptr - curr_thread->kernel_stack_alloced_ptr;
 
     tpf->x0 = newt->pid;
-    return newt->pid;
+    return newt->pid;   // pid = new
 
 child:
-    tpf = (trapframe_t*)((char *)tpf + (unsigned long)newt->kernel_stack_alloced_ptr - (unsigned long)parent_thread_t->kernel_stack_alloced_ptr); // move tpf
-    tpf->sp_el0 += newt->stack_alloced_ptr - parent_thread_t->stack_alloced_ptr;
+    // the offset of current syscall should also be updated to new return point
+    // move child->tpf to correct address
+    tpf = (trapframe_t*)((char *)tpf + (unsigned long)newt->kernel_stack_alloced_ptr - (unsigned long)parent_thread->kernel_stack_alloced_ptr); // move tpf
+    tpf->sp_el0 += newt->stack_alloced_ptr - parent_thread->stack_alloced_ptr;
     tpf->x0 = 0;
-    return 0;
+    return 0;           // pid = 0
 }
 
 void exit(trapframe_t *tpf, int status)
@@ -130,7 +126,6 @@ void exit(trapframe_t *tpf, int status)
 
 int syscall_mbox_call(trapframe_t *tpf, unsigned char ch, unsigned int *mbox)
 {
-    el1_interrupt_disable();
     unsigned long r = (((unsigned long)((unsigned long)mbox) & ~0xF) | (ch & 0xF));
     /* wait until we can write to the mailbox */
     do{asm volatile("nop");} while (*MBOX_STATUS & BCM_ARM_VC_MS_FULL);
@@ -146,31 +141,25 @@ int syscall_mbox_call(trapframe_t *tpf, unsigned char ch, unsigned int *mbox)
         {
             /* is it a valid successful response? */
             tpf->x0 = (mbox[1] == MBOX_REQUEST_SUCCEED);
-            el1_interrupt_enable();
             return mbox[1] == MBOX_REQUEST_SUCCEED;
         }
     }
 
     tpf->x0 = 0;
-    el1_interrupt_enable();
     return 0;
 }
 
 void kill(trapframe_t *tpf, int pid)
 {
-    el1_interrupt_disable();
-    if ( pid < 0 || pid >= PIDMAX || !threads[pid].isused)
-    {
-        el1_interrupt_enable();
-        return;
-    }
+    if ( pid < 0 || pid >= PIDMAX || !threads[pid].isused) return;
     threads[pid].iszombie = 1;
-    el1_interrupt_enable();
+    // select next thread
     schedule();
 }
 
 void signal_register(int signal, void (*handler)())
 {
+    uart_sendline("signal_register:%d\n", signal);
     if (signal > SIGNAL_MAX || signal < 0)return;
 
     curr_thread->signal_handler[signal] = handler;
@@ -179,13 +168,12 @@ void signal_register(int signal, void (*handler)())
 void signal_kill(int pid, int signal)
 {
     if (pid > PIDMAX || pid < 0 || !threads[pid].isused)return;
-    //lock();
     threads[pid].sigcount[signal]++;
-    //unlock();
 }
 
 void sigreturn(trapframe_t *tpf)
 {
+    uart_sendline("back to EL1\n");
     unsigned long signal_ustack = tpf->sp_el0 % USTACK_SIZE == 0 ? tpf->sp_el0 - USTACK_SIZE : tpf->sp_el0 & (~(USTACK_SIZE - 1));
     kfree((char*)signal_ustack);
     // When the handler completes, the kernel restores the context so that the original execution can proceed

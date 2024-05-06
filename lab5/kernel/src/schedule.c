@@ -14,7 +14,7 @@ int pid_history = 0;
 
 void init_thread_sched()
 {
-    //el1_interrupt_disable();
+    // init thread freelist and run_queue
     run_queue = kmalloc(sizeof(list_head_t));
     INIT_LIST_HEAD(run_queue);
 
@@ -27,11 +27,10 @@ void init_thread_sched()
     }
 
     /* https://stackoverflow.com/questions/64856566/what-is-the-purpose-of-thread-id-registers-like-tpidr-el0-tpidr-el1-in-arm */
-    asm volatile("msr tpidr_el1, %0" ::"r"(kmalloc(sizeof(thread_t)))); /// malloc a space for current kernel thread to prevent crash
+    asm volatile("msr tpidr_el1, %0" ::"r"(kmalloc(sizeof(thread_t)))); /// set tpidr_el1 to thread pointer
 
     thread_t* idlethread = thread_create(idle);
     curr_thread = idlethread;
-    //el1_interrupt_enable();
 }
 
 void idle(){
@@ -50,30 +49,24 @@ void schedule(){
     //if(list_is_head(&curr_thread->listhead,run_queue))
     do{
         curr_thread = (thread_t *)curr_thread->listhead.next;
-    }while (list_is_head(&curr_thread->listhead, run_queue) || curr_thread->iszombie);
+    } while (list_is_head(&curr_thread->listhead, run_queue)); // find a runnable thread
     switch_to(get_current(), &curr_thread->context);
-    //el1_interrupt_enable();
 }
 
 void kill_zombies(){
-    //el1_interrupt_disable();
-    //while(!list_empty(zombie_queue))
     list_head_t *curr;
     list_for_each(curr,run_queue)
     {
         if (((thread_t *)curr)->iszombie)
         {
-            // list_head_t *prev_curr = curr->prev;
             list_del_entry(curr);
             kfree(((thread_t *)curr)->stack_alloced_ptr);        // free stack
             kfree(((thread_t *)curr)->kernel_stack_alloced_ptr); // free stack
-            //kfree(((thread_t *)curr)->data); // free data (don't free data because of fork)
+            //kfree(((thread_t *)curr)->data);                   // Don't free data because children may use data
             ((thread_t *)curr)->iszombie = 0;
             ((thread_t *)curr)->isused = 0;
-            //curr = prev_curr;
         }
     }
-    //el1_interrupt_enable();
 }
 
 int exec_thread(char *data, unsigned int filesize)
@@ -81,7 +74,7 @@ int exec_thread(char *data, unsigned int filesize)
     thread_t *t = thread_create(data);
     t->data = kmalloc(filesize);
     t->datasize = filesize;
-    t->context.lr = (unsigned long)t->data;
+    t->context.lr = (unsigned long)t->data; // set return address to program if function call completes
     //copy file into data
     for (int i = 0; i < filesize;i++)
     {
@@ -92,11 +85,11 @@ int exec_thread(char *data, unsigned int filesize)
     add_timer(schedule_timer, 1, "", 0);
 
     // eret to exception level 0
-    asm("msr tpidr_el1, %0\n\t" // &t->context
-        "msr elr_el1, %1\n\t"   // t->context.lr
-        "msr spsr_el1, xzr\n\t" // enable interrupt in EL0. You can do it by setting spsr_el1 to 0 before returning to EL0.
-        "msr sp_el0, %2\n\t"    // t->context.sp
-        "mov sp, %3\n\t"        // t->kernel_stack_alloced_ptr + KSTACK_SIZE
+    asm("msr tpidr_el1, %0\n\t" // Hold the "kernel(el1)" thread structure information
+        "msr elr_el1, %1\n\t"   // When el0 -> el1, store return address for el1 -> el0
+        "msr spsr_el1, xzr\n\t" // Enable interrupt in EL0 -> Used for thread scheduler
+        "msr sp_el0, %2\n\t"    // el0 stack pointer for el1 process
+        "mov sp, %3\n\t"        // sp is reference for the same el process. For example, el2 cannot use sp_el2, it has to use sp to find its own stack.
         "eret\n\t" ::"r"(&t->context),"r"(t->context.lr), "r"(t->context.sp), "r"(t->kernel_stack_alloced_ptr + KSTACK_SIZE));
 
     return 0;
@@ -104,17 +97,14 @@ int exec_thread(char *data, unsigned int filesize)
 
 thread_t *thread_create(void *start)
 {
-    //el1_interrupt_disable();
     thread_t *r;
-    for (int i = pid_history; i <= PIDMAX; i++)
-    {
-        if (!threads[i].isused)
-        {
-            r = &threads[i];
-            pid_history = i;
-            break;
-        }
+    // find usable PID, don't use the previous one
+    if( pid_history > PIDMAX ) return 0;
+    if (!threads[pid_history].isused){
+        r = &threads[pid_history];
+        pid_history += 1;
     }
+    else return 0;
     //uart_sendline("Thread create : %d\n", r->pid);
     r->iszombie = 0; // Initialize to indicate the thread is not a zombie.
     r->isused = 1; // Mark the thread as used.
@@ -130,34 +120,34 @@ thread_t *thread_create(void *start)
 
     // Advanced 1 POSIX signal
     r->signal_inProcess = 0;
-    //initial signal handler with signal_default_handler (kill thread)
+
+    //initial all signal handler with signal_default_handler (kill thread)
     for (int i = 0; i < SIGNAL_MAX;i++)
     {
         r->signal_handler[i] = signal_default_handler;
         r->sigcount[i] = 0;
     }
     list_add(&r->listhead, run_queue);
-    //el1_interrupt_enable();
+
     return r;
 }
 
 void thread_exit(){
-    //uart_sendline("Thread PID %d exit \n", curr_thread->pid);
-    // el1_interrupt_disable();
-    // list_del_entry(&curr_thread->listhead);
+    // thread cannot deallocate the stack while still using it, wait for someone to recycle it.
+    // In this lab, idle thread handles this task, instead of parent thread.
     curr_thread->iszombie = 1;
-    // list_add(&curr_thread->listhead, zombie_queue);
     schedule();
-    //el1_interrupt_enable();
 }
 
 void schedule_timer(char* notuse){
     unsigned long long cntfrq_el0;
     __asm__ __volatile__("mrs %0, cntfrq_el0\n\t": "=r"(cntfrq_el0)); //tick frequency
     add_timer(schedule_timer, cntfrq_el0 >> 5, "", 1);
+    // 32 * default timer -> trigger next schedule timer
 }
 
 void foo(){
+    // Lab5 Basic 1 Test function
     for (int i = 0; i < 10; ++i)
     {
         uart_sendline("Thread id: %d %d\n", curr_thread->pid, i);

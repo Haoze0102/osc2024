@@ -7,26 +7,20 @@ extern thread_t *curr_thread;
 
 void check_signal(trapframe_t *tpf)
 {
-    //lock();
     if(curr_thread->signal_inProcess) return;
-    //prevent nested running signal handler
+    // The case of nested registered signal handlers does not need to be handled.
     curr_thread->signal_inProcess = 1;
-    //unlock();
     for (int i = 0; i <= SIGNAL_MAX; i++)
     {
         // before running the handler, you should save the original context
         store_context(&curr_thread->signal_savedContext);
         if(curr_thread->sigcount[i]>0)
         {
-            //lock();
             curr_thread->sigcount[i]--;
-            //unlock();
             run_signal(tpf, i);
         }
     }
-    //lock();
     curr_thread->signal_inProcess = 0;
-    //unlock();
 }
 
 void run_signal(trapframe_t *tpf, int signal)
@@ -59,6 +53,7 @@ void signal_handler_wrapper()
     // here to exec other handler
     // but still in EL0
     (curr_thread->curr_signal_handler)();
+    uart_sendline("other handler\n");
     //system call sigreturn, back to EL1
     asm("mov x8,50\n\t"
         "svc 0\n\t");
@@ -66,5 +61,6 @@ void signal_handler_wrapper()
 
 void signal_default_handler()
 {
+    uart_sendline("signal_default_handler\n");
     kill(0,curr_thread->pid);
 }
