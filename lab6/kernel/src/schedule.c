@@ -33,6 +33,7 @@ void init_thread_sched()
 
     thread_t* idlethread = thread_create(idle,0x1000);
     curr_thread = idlethread;
+    asm volatile("msr tpidr_el1, %0" ::"r" (&idlethread->context));
     unlock();
 }
 
@@ -76,19 +77,15 @@ int thread_exec(char *data, unsigned int filesize)
 {
     thread_t *t = thread_create(data, filesize);
 
-    mappages(t->context.pgd, 0x3C000000L, 0x3000000L, 0x3C000000L);
-    mappages(t->context.pgd, 0x3F000000L, 0x1000000L, 0x3F000000L);
-    mappages(t->context.pgd, 0x40000000L, 0x40000000L, 0x40000000L);
-
-    mappages(t->context.pgd, 0xffffffffb000, 0x4000, (size_t)VIRT_TO_PHYS(t->stack_alloced_ptr));
-    mappages(t->context.pgd, 0x0, filesize, (size_t)VIRT_TO_PHYS(t->data));
+    mappages(t->context.pgd, USER_KERNEL_BASE, t->datasize, (size_t)VIRT_TO_PHYS(t->data));
+    mappages(t->context.pgd, USER_STACK_BASE - USTACK_SIZE, USTACK_SIZE, (size_t)VIRT_TO_PHYS(t->stack_alloced_ptr));
+    mappages(t->context.pgd, PERIPHERAL_START, PERIPHERAL_END - PERIPHERAL_START, PERIPHERAL_START);
 
     t->context.pgd = VIRT_TO_PHYS(t->context.pgd);
-    t->context.sp = 0xfffffffff000;
-    t->context.fp = 0xfffffffff000;
-    t->context.lr = 0L;
+    t->context.sp = USER_STACK_BASE;
+    t->context.fp = USER_STACK_BASE;
+    t->context.lr = USER_KERNEL_BASE;
 
-    t->context.lr = (unsigned long)0L;
     //copy file into data
     for (int i = 0; i < filesize;i++)
     {
@@ -104,7 +101,11 @@ int thread_exec(char *data, unsigned int filesize)
         "msr spsr_el1, xzr\n\t" // enable interrupt in EL0. You can do it by setting spsr_el1 to 0 before returning to EL0.
         "msr sp_el0, %2\n\t"    // When el0 -> el1, store return address for el1 -> el0
         "mov sp, %3\n\t"        // sp is reference for the same el process. For example, el2 cannot use sp_el2, it has to use sp to find its own stack.
+        "dsb ish\n\t"        // ensure write has completed
         "msr ttbr0_el1, %4\n\t"
+        "tlbi vmalle1is\n\t" // invalidate all TLB entries
+        "dsb ish\n\t"        // ensure completion of TLB invalidatation
+        "isb\n\t"            // clear pipeline"
         "eret\n\t" ::"r"(&t->context),"r"(t->context.lr), "r"(t->context.sp), "r"(t->kernel_stack_alloced_ptr + KSTACK_SIZE), "r"(t->context.pgd));
 
     return 0;

@@ -2,6 +2,7 @@
 #include "syscall.h"
 #include "schedule.h"
 #include "memory.h"
+#include "mmu.h"
 
 extern thread_t *curr_thread;
 
@@ -47,8 +48,9 @@ void run_signal(trapframe_t* tpf,int signal)
     //on the other hand, other handler should be run in user mode
     //during execution, the handler requires a user stack. 
     //The kernel should allocate a new stack for the handler and then recycle it after it completes
-    char *temp_signal_userstack = kmalloc(USTACK_SIZE);
 
+    char *temp_signal_userstack = kmalloc(USTACK_SIZE);
+    
     asm("msr elr_el1, %0\n\t"
         "msr sp_el0, %1\n\t"
         "msr spsr_el1, %2\n\t"
@@ -61,9 +63,10 @@ void signal_handler_wrapper()
 {
     // here to exec other handler
     // but still in EL0
-    (curr_thread->curr_signal_handler)();
+    //elr_el1 set to function -> call function by x0
     //system call sigreturn, back to EL1
-    asm("mov x8,50\n\t"
+    asm("blr x0\n\t"
+        "mov x8,50\n\t"
         "svc 0\n\t");
 }
 

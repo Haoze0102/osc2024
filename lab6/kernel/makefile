@@ -35,7 +35,7 @@ run:
 	qemu-system-aarch64 -M raspi3 -display none -kernel kernel8.img -serial null -serial stdio -initrd /root/osc2024/lab5/create_fs/initramfs.cpio -dtb bcm2710-rpi-3-b-plus.dtb
 
 run_display:
-	qemu-system-aarch64 -M raspi3 -kernel kernel8.img -serial null -serial stdio -initrd /root/osc2024/lab5/create_fs/initramfs.cpio -dtb bcm2710-rpi-3-b-plus.dtb
+	qemu-system-aarch64 -M raspi3 -kernel kernel8.img -serial null -serial stdio -initrd /root/osc2024/lab6_unknown/create_fs/initramfs.cpio -dtb bcm2710-rpi-3-b-plus.dtb
 
 debug:
 	qemu-system-aarch64 -M raspi3 -display none -kernel kernel8.img -serial null -serial stdio -initrd /root/osc2024/lab5/create_fs/initramfs.cpio -dtb bcm2710-rpi-3-b-plus.dtb -S -s
