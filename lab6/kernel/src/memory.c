@@ -177,7 +177,8 @@ void page_free(void* ptr)
     memory_sendline("        Before\r\n");
     show_page_info();
     target_frame_ptr->used = FRAME_STATUS_FREE;
-    while(coalesce(target_frame_ptr) == 0); // merge buddy iteratively
+    frame_t* temp;
+    while ((temp = coalesce(target_frame_ptr)) != (frame_t *)-1)target_frame_ptr = temp;
     list_add(&target_frame_ptr->listhead, &frame_freelist[target_frame_ptr->val]);
     memory_sendline("        After\r\n");
     show_page_info();
@@ -202,31 +203,31 @@ frame_t* get_buddy(frame_t *frame)
     return &frame_array[frame->idx ^ (1 << frame->val)];
 }
 
-int coalesce(frame_t *frame_ptr)
+frame_t* coalesce(frame_t *frame_ptr)
 {
     frame_t *buddy = get_buddy(frame_ptr);
     // 當前已是最大值6
     if (frame_ptr->val == FRAME_INDEX_FINAL){
         //uart_sendline("    coalesce FAIL : current frame have max frame index\n");
-        return -1;
+        return (frame_t*)-1;
     }
 
     // buddy的val不同
     if (frame_ptr->val != buddy->val){
         //uart_sendline("    coalesce FAIL : buddy val different\n");
-        return -1;
+        return (frame_t*)-1;
     }
 
     // buddy是已使用的狀態
     if (buddy->used == FRAME_STATUS_ALLOCATED){
         //uart_sendline("    coalesce FAIL : buddy has been allocated\n");
-        return -1;
+        return (frame_t*)-1;
     }
 
     list_del_entry((struct list_head *)buddy);
     frame_ptr->val += 1;
     //memory_sendline("    coalesce SUCESS : merging 0x%x, 0x%x, -> val = %d\r\n", frame_ptr->idx, buddy->idx, frame_ptr->val);
-    return 0;
+    return buddy < frame_ptr ? buddy : frame_ptr;
 }
 
 void show_page_info(){
@@ -353,9 +354,9 @@ void memory_reserve(unsigned long long start, unsigned long long end)
     start -= start % PAGESIZE; // floor (align 0x1000)
     end = end % PAGESIZE ? end + PAGESIZE - (end % PAGESIZE) : end; // ceiling (align 0x1000)
 
-    memory_sendline("Reserved Memory: ");
-    memory_sendline("start 0x%x ~ ", start);
-    memory_sendline("end 0x%x\r\n",end);
+    uart_sendline("Reserved Memory: ");
+    uart_sendline("start 0x%x ~ ", start);
+    uart_sendline("end 0x%x\r\n",end);
 
     // delete page from freelist
     // 從INDEX6開始往下檢查
