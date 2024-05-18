@@ -1,7 +1,7 @@
 #ifndef _MEMORY_H_
 #define _MEMORY_H_
 
-#include "u_list.h"
+#include "list.h"
 
 /* Lab2 */
 void* s_allocator(unsigned int size);

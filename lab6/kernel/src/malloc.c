@@ -1,47 +1,25 @@
-#include "memory.h"
-#include "list.h"
-#include "uart1.h"
-#include "exception.h"
-#include "dtb.h"
+#include "malloc.h"
 #include "cpio.h"
+#include "dtb.h"
+#include "exception.h"
 #include "mmu.h"
+#include "uart1.h"
 
-extern char  _heap_start;
-static char* htop_ptr = &_heap_start;
+extern char _heap_start;
+extern char _end;
+static char *simple_top = &_heap_start;
+static char *kernel_end = &_end;
 
-extern char  _kernel_start;
-extern char  _kernel_end;
-extern char  _stack_end;
-extern char  _stack_top;
-
-#ifdef DEBUG
-    #define memory_sendline(fmt, args ...) uart_sendline(fmt, ##args)
-#else
-    #define memory_sendline(fmt, args ...) (void)0
-#endif
-
-// ------ Lab2 ------
-void* s_allocator(unsigned int size) {
-    // -> htop_ptr
-    // htop_ptr + 0x02:  heap_block size
-    // htop_ptr + 0x10 ~ htop_ptr + 0x10 * k:
-    //            { heap_block }
-    // -> htop_ptr
-
-    // 0x10 for heap_block header
-    char* r = htop_ptr + 0x10;
-    // size paddling to multiple of 0x10
+// simple_malloc
+void *simple_malloc(unsigned int size)
+{
+    char *r = simple_top + 0x10;
     size = 0x10 + size - size % 0x10;
-    *(unsigned int*)(r - 0x8) = size;
-    htop_ptr += size;
+    *(unsigned int *)(r - 0x8) = size;
+    simple_top += size;
     return r;
 }
 
-void s_free(void* ptr) {
-    // To do?
-}
-
-// ------ Lab4 allocator------
 static frame_t*           frame_array; // stores whole physical address frame's statement and index
 static list_head_t        frame_freelist[FRAME_INDEX_MAX ]; // store available block for frame(use linklist)
 static list_head_t        cache_list[CACHE_INDEX_MAX ]; // store available block for cache(use linklist)
@@ -97,9 +75,9 @@ void init_allocator()
     memory_sendline("\r\n* Startup Allocation *\r\n");
     memory_sendline("buddy system: usable memory region: 0x%x ~ 0x%x\n", BUDDY_MEMORY_BASE, BUDDY_MEMORY_BASE + BUDDY_MEMORY_PAGE_COUNT * PAGESIZE);
     dtb_find_and_store_reserved_memory(); // find spin tables in dtb
-    memory_reserve(PHYS_TO_VIRT(MMU_PGD_ADDR), PHYS_TO_VIRT(MMU_PTE_ADDR+0x2000)); // // PGD's page frame at 0x1000 // PUD's page frame at 0x2000 PMD 0x3000-0x5000
-    memory_reserve((unsigned long long)&_kernel_start, (unsigned long long)&_kernel_end); // kernel
-    memory_reserve((unsigned long long)&_stack_end, (unsigned long long)&_stack_top);  // heap & stack -> simple allocator
+    memory_reserve(PHYS_TO_VIRT(kernel_pgd_addr), PHYS_TO_VIRT(kernel_pgd_addr+0x4000+512*512*2*8)); // // PGD's page frame at 0x1000 // PUD's page frame at 0x2000 PMD 0x3000-0x5000memory_reserve((unsigned long long)&_start, (unsigned long long)&_end); // kernel
+    memory_reserve((unsigned long long)&_heap_top, (unsigned long long)&_stack_top);  // heap & stack -> simple allocator
+    memory_reserve((unsigned long long)CPIO_DEFAULT_START, (unsigned long long)CPIO_DEFAULT_END); //Initramfs
 }
 
 //smallest 4K

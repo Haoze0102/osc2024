@@ -4,13 +4,13 @@
 #include "mbox.h"
 #include "power.h"
 #include "cpio.h"
-#include "u_string.h"
+#include "string.h"
 #include "dtb.h"
 #include "memory.h"
 #include "timer.h"
 #include "schedule.h"
 
-#define CLI_MAX_CMD 13
+#define CLI_MAX_CMD 9
 
 extern int   uart_recv_echo_flag;
 extern char* dtb_ptr;
@@ -23,14 +23,10 @@ struct CLI_CMDS cmd_list[CLI_MAX_CMD]=
     {.command="exec", .help="execute a command, replacing current image with a new image"},
     {.command="hello", .help="print Hello World!"},
     {.command="help", .help="print all available commands"},
-    {.command="s_allocator", .help="simple allocator in heap session"},
     {.command="info", .help="get device information via mailbox"},
     {.command="ls", .help="list directory contents"},
-    {.command="buddy", .help="memory testcase generator, allocate and free"},
-    {.command="setTimeout", .help="setTimeout [MESSAGE] [SECONDS]"},
     {.command="timer", .help="set core timer interrupt every 2 second"},
-    {.command="reboot", .help="reboot the device"},
-    {.command="thread", .help="thread tester with dummy function - foo()"}
+    {.command="reboot", .help="reboot the device"}
 };
 
 void cli_cmd_clear(char* buffer, int length)
@@ -80,20 +76,12 @@ void cli_cmd_exec(char* buffer)
         do_cmd_help();
     } else if (strcmp(cmd, "info") == 0) {
         do_cmd_info();
-    } else if (strcmp(cmd, "thread") == 0) {
-        do_cmd_thread_tester();
-    } else if (strcmp(cmd, "s_allocator") == 0) {
-        do_cmd_s_allocator();
     } else if (strcmp(cmd, "ls") == 0) {
         do_cmd_ls(argvs);
-    } else if (strcmp(cmd, "buddy") == 0) {
-        do_cmd_memory_tester();
     } else if (strcmp(cmd, "setTimeout") == 0) {
         char* sec = str_SepbySpace(argvs);
         do_cmd_setTimeout(argvs, sec);
-    } else if (strcmp(cmd, "timer") == 0) {
-        do_cmd_set2sAlert();
-    } else if (strcmp(cmd, "reboot") == 0) {
+    }else if (strcmp(cmd, "reboot") == 0) {
         do_cmd_reboot();
     }
 }
@@ -173,7 +161,7 @@ void do_cmd_exec(char* filepath)
         if(strcmp(c_filepath, filepath)==0)
         {
             uart_recv_echo_flag = 0; // syscall.img has different mechanism on uart I/O.
-            exec_thread(c_filedata, c_filesize);
+            thread_exec(c_filedata, c_filesize);
         }
 
         //if this is TRAILER!!! (last of file)
@@ -225,31 +213,6 @@ void do_cmd_info()
     }
 }
 
-void do_cmd_s_allocator()
-{
-    //test malloc
-    char* test1 = s_allocator(0x18);
-    memcpy(test1,"test malloc1",sizeof("test malloc1"));
-    uart_puts("%s\n",test1);
-
-    char* test2 = s_allocator(0x20);
-    memcpy(test2,"test malloc2",sizeof("test malloc2"));
-    uart_puts("%s\n",test2);
-
-    char* test3 = s_allocator(0x28);
-    memcpy(test3,"test malloc3",sizeof("test malloc3"));
-    uart_puts("%s\n",test3);
-}
-
-void do_cmd_thread_tester()
-{
-    for (int i = 0; i < 5; ++i)
-    { // N should > 2
-        thread_create(foo, 0x1000);
-    }
-    idle();
-}
-
 void do_cmd_ls(char* workdir)
 {
     char* c_filepath;
@@ -272,50 +235,50 @@ void do_cmd_ls(char* workdir)
     }
 }
 
-void do_cmd_memory_tester()
-{
+// void do_cmd_memory_tester()
+// {
 
-    // 分配較小的記憶體( <= 0x1000)
-    char *small1 = kmalloc(0x10);  // 16 bytes
-    char *small2 = kmalloc(0x100);  // 256 bytes
-    char *small3 = kmalloc(0x1000); // 4 KB
+//     // 分配較小的記憶體( <= 0x1000)
+//     char *small1 = kmalloc(0x10);  // 16 bytes
+//     char *small2 = kmalloc(0x100);  // 256 bytes
+//     char *small3 = kmalloc(0x1000); // 4 KB
 
-    // 釋放
-    kfree(small1);
-    kfree(small2);
-    kfree(small3);
+//     // 釋放
+//     kfree(small1);
+//     kfree(small2);
+//     kfree(small3);
 
-    // 分配測試不同大小的cache
-    char *s1 = kmalloc(32);
-    char *s2 = kmalloc(50);
-    char *m1 = kmalloc(128);
-    char *m2 = kmalloc(129);
-    char *l1 = kmalloc(512);
-    char *l2 = kmalloc(999);
+//     // 分配測試不同大小的cache
+//     char *s1 = kmalloc(32);
+//     char *s2 = kmalloc(50);
+//     char *m1 = kmalloc(128);
+//     char *m2 = kmalloc(129);
+//     char *l1 = kmalloc(512);
+//     char *l2 = kmalloc(999);
 
-    // 分配測試8KB的記憶體
-    char *large1 = kmalloc(0x2000); // 8 KB
-    char *large2 = kmalloc(0x2000);
-    char *large3 = kmalloc(0x2000);
-    char *large4 = kmalloc(0x2000);
-    char *large5 = kmalloc(0x2000);
-    char *large6 = kmalloc(0x2000);
+//     // 分配測試8KB的記憶體
+//     char *large1 = kmalloc(0x2000); // 8 KB
+//     char *large2 = kmalloc(0x2000);
+//     char *large3 = kmalloc(0x2000);
+//     char *large4 = kmalloc(0x2000);
+//     char *large5 = kmalloc(0x2000);
+//     char *large6 = kmalloc(0x2000);
 
-    // 釋放
-    kfree(s1);
-    kfree(s2);
-    kfree(m1);
-    kfree(m2);
-    kfree(l1);
-    kfree(l2);
+//     // 釋放
+//     kfree(s1);
+//     kfree(s2);
+//     kfree(m1);
+//     kfree(m2);
+//     kfree(l1);
+//     kfree(l2);
 
-    kfree(large1);
-    kfree(large2);
-    kfree(large3);
-    kfree(large4);
-    kfree(large5);
-    kfree(large6);
-}
+//     kfree(large1);
+//     kfree(large2);
+//     kfree(large3);
+//     kfree(large4);
+//     kfree(large5);
+//     kfree(large6);
+// }
 
 
 void do_cmd_setTimeout(char* msg, char* sec)
@@ -323,10 +286,10 @@ void do_cmd_setTimeout(char* msg, char* sec)
     add_timer(uart_sendline, atoi(sec), msg, 0);
 }
 
-void do_cmd_set2sAlert()
-{
-    add_timer(timer_set2sAlert, 2, "2sAlert", 0);
-}
+// void do_cmd_set2sAlert()
+// {
+//     add_timer(timer_set2sAlert, 2, "2sAlert", 0);
+// }
 
 void do_cmd_reboot()
 {

@@ -1,18 +1,17 @@
 #ifndef _SCHED_H_
 #define _SCHED_H_
 
-#include "u_list.h"
+#include "list.h"
 
-#define PIDMAX 32768 // RPi3B pid_max: default: 32768 minimum: 301
+#define PIDMAX      32768 // RPi3B pid_max: default: 32768 minimum: 301
 #define USTACK_SIZE 0x4000 // User stack size
 #define KSTACK_SIZE 0x4000 // Kernel stack size
 #define SIGNAL_MAX  64 // number of sugnal can be use
 
-extern void  switch_to(void *curr_context, void *next_context);
-extern void  switch_pgd(unsigned long pgd);
-extern void* get_current();
-extern void  store_context(void *curr_context);
-extern void  load_context(void *curr_context);
+extern void switch_to(void *curr_context, void *next_context);
+extern void store_context(void *curr_context);
+extern void load_context(void *curr_context);
+extern void *get_current();
 
 // arch/arm64/include/asm/processor.h - cpu_context
 typedef struct thread_context
@@ -34,7 +33,7 @@ typedef struct thread_context
     unsigned long fp; // base pointer for local variable in stack
     unsigned long lr; // store return address
     unsigned long sp; // stack pointer, varys from function calls
-    void* ttbr0_el1;
+    void* pgd;   // use for MMU mapping (user space)
 } thread_context_t;
 
 /* https://zhuanlan.zhihu.com/p/473736908 */
@@ -52,9 +51,14 @@ typedef struct thread
     void             (*signal_handler[SIGNAL_MAX+1])();   // Signal handlers for different signal
     int              sigcount[SIGNAL_MAX+1];              // Signal Pending buffer
     void             (*curr_signal_handler)();            // Allow Signal handler overwritten by others
-    int              signal_inProcess;                    // Signal Processing Lock
-    thread_context_t signal_savedContext;                 // Store registers before signal handler involving
+    int              signal_is_checking;                    // Signal Processing Lock
+    thread_context_t signal_saved_context;                 // Store registers before signal handler involving
 } thread_t;
+
+extern thread_t    *curr_thread;
+extern list_head_t *run_queue;
+extern list_head_t *wait_queue;
+extern thread_t    threads[PIDMAX + 1];
 
 void schedule_timer(char *notuse);
 void init_thread_sched();
@@ -65,6 +69,5 @@ void thread_exit();
 thread_t *thread_create(void *start, unsigned int filesize);
 int exec_thread(char *data, unsigned int filesize);
 
-void foo();
 
 #endif /* _SCHED_H_ */

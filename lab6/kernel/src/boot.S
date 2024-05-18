@@ -6,17 +6,16 @@
 .global _start
 
 _start:
+    // Switch from EL2 to EL1 .
     bl from_el2_to_el1
 
+set_mmu_configuration:
     // set paging configuration (up : 0xffff000000000000 low : 0x0000000000000000)
     ldr x4, = TCR_CONFIG_DEFAULT
     msr tcr_el1, x4
 
     // Set Used Memory Attributes
-    ldr x4, =( \
-        (MAIR_DEVICE_nGnRnE << (MAIR_IDX_DEVICE_nGnRnE * 8)) | \
-        (MAIR_NORMAL_NOCACHE << (MAIR_IDX_NORMAL_NOCACHE * 8)) \
-    )
+    ldr x4, =((MAIR_DEVICE_nGnRnE << (MAIR_IDX_DEVICE_nGnRnE * 8)) | (MAIR_NORMAL_NOCACHE << (MAIR_IDX_NORMAL_NOCACHE * 8)))
     msr mair_el1, x4
 
     // set and enable MMU
@@ -54,12 +53,15 @@ set_exception_vector_table:
     msr vbar_el1, x1               //           Holds the exception base address for any exception that is taken to EL1.
 
 setup_stack:
-    ldr     x1, =_stack_top
-    mov     sp, x1                 // sp = x1
+    // set top of stack at 0xffff00003c000000 (last usable memory)
+    movz x3, 0x0000
+    movk x3, 0x3c00, lsl 16
+    movk x3, 0xffff, lsl 48
+    mov  sp, x3
 
 setup_bss:
-    ldr     x1, =_bss_top          // load 32bits to x1 from _bss_top
-    ldr     w2, =_bss_size         // load 64bits to w2 from _bss_size
+    ldr     x1, =__bss_start
+    ldr     w2, =__bss_size
 
 init_bss:
     cbz     w2, run_main

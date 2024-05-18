@@ -7,29 +7,33 @@ extern thread_t *curr_thread;
 
 void check_signal(trapframe_t *tpf)
 {
-    if(curr_thread->signal_inProcess) return;
     lock();
-    // The case of nested registered signal handlers does not need to be handled.
-    curr_thread->signal_inProcess = 1;
+    if(curr_thread->signal_is_checking)
+    {
+        unlock();
+        return;
+    }
+    //prevent nested running signal handler
+    curr_thread->signal_is_checking = 1;
     unlock();
     for (int i = 0; i <= SIGNAL_MAX; i++)
     {
         // before running the handler, you should save the original context
-        store_context(&curr_thread->signal_savedContext);
+        store_context(&curr_thread->signal_saved_context);
         if(curr_thread->sigcount[i]>0)
         {
             lock();
             curr_thread->sigcount[i]--;
             unlock();
-            run_signal(tpf, i);
+            run_signal(tpf,i);
         }
     }
     lock();
-    curr_thread->signal_inProcess = 0;
+    curr_thread->signal_is_checking = 0;
     unlock();
 }
 
-void run_signal(trapframe_t *tpf, int signal)
+void run_signal(trapframe_t* tpf,int signal)
 {
     curr_thread->curr_signal_handler = curr_thread->signal_handler[signal];
 
@@ -51,7 +55,6 @@ void run_signal(trapframe_t *tpf, int signal)
         "eret\n\t" ::"r"(signal_handler_wrapper),
         "r"(temp_signal_userstack + USTACK_SIZE),
         "r"(tpf->spsr_el1));
-
 }
 
 void signal_handler_wrapper()
@@ -59,7 +62,6 @@ void signal_handler_wrapper()
     // here to exec other handler
     // but still in EL0
     (curr_thread->curr_signal_handler)();
-    uart_sendline("other handler\n");
     //system call sigreturn, back to EL1
     asm("mov x8,50\n\t"
         "svc 0\n\t");

@@ -1,5 +1,5 @@
-#ifndef _U_LIST_H_
-#define _U_LIST_H_
+#ifndef LIST_H
+#define LIST_H
 
 /*
  * Circular doubly linked list implementation.
@@ -134,4 +134,4 @@ static inline int list_size(const struct list_head *head)
 	return i;
 }
 
-#endif /* _U_LIST_H_ */
+#endif
