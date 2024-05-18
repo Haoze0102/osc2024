@@ -48,15 +48,15 @@ void run_signal(trapframe_t* tpf,int signal)
     //on the other hand, other handler should be run in user mode
     //during execution, the handler requires a user stack. 
     //The kernel should allocate a new stack for the handler and then recycle it after it completes
-
-    char *temp_signal_userstack = kmalloc(USTACK_SIZE);
-    
     asm("msr elr_el1, %0\n\t"
         "msr sp_el0, %1\n\t"
         "msr spsr_el1, %2\n\t"
-        "eret\n\t" ::"r"(signal_handler_wrapper),
-        "r"(temp_signal_userstack + USTACK_SIZE),
-        "r"(tpf->spsr_el1));
+        "mov x0, %3\n\t"
+        "eret\n\t"
+        :: "r"(USER_SIGNAL_WRAPPER_VA + ((size_t)signal_handler_wrapper % 0x1000)),
+           "r"(tpf->sp_el0),
+           "r"(tpf->spsr_el1),
+           "r"(curr_thread->curr_signal_handler));
 }
 
 void signal_handler_wrapper()

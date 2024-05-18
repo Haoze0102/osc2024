@@ -77,9 +77,12 @@ int thread_exec(char *data, unsigned int filesize)
 {
     thread_t *t = thread_create(data, filesize);
 
-    mappages(t->context.pgd, USER_KERNEL_BASE, t->datasize, (size_t)VIRT_TO_PHYS(t->data));
-    mappages(t->context.pgd, USER_STACK_BASE - USTACK_SIZE, USTACK_SIZE, (size_t)VIRT_TO_PHYS(t->stack_alloced_ptr));
-    mappages(t->context.pgd, PERIPHERAL_START, PERIPHERAL_END - PERIPHERAL_START, PERIPHERAL_START);
+    mappages(t->context.pgd, USER_KERNEL_BASE, t->datasize, (size_t)VIRT_TO_PHYS(t->data), 0);
+    mappages(t->context.pgd, USER_STACK_BASE - USTACK_SIZE, USTACK_SIZE, (size_t)VIRT_TO_PHYS(t->stack_alloced_ptr), 0);
+    mappages(t->context.pgd, PERIPHERAL_START, PERIPHERAL_END - PERIPHERAL_START, PERIPHERAL_START, 0);
+
+    // Additional Block for Read-Only block -> User space signal handler cannot be killed
+    mappages(t->context.pgd, USER_SIGNAL_WRAPPER_VA, 0x2000, (size_t)VIRT_TO_PHYS(signal_handler_wrapper), PD_RDONLY);
 
     t->context.pgd = VIRT_TO_PHYS(t->context.pgd);
     t->context.sp = USER_STACK_BASE;
