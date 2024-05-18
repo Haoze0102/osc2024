@@ -8,19 +8,25 @@ extern thread_t *curr_thread;
 void check_signal(trapframe_t *tpf)
 {
     if(curr_thread->signal_inProcess) return;
+    lock();
     // The case of nested registered signal handlers does not need to be handled.
     curr_thread->signal_inProcess = 1;
+    unlock();
     for (int i = 0; i <= SIGNAL_MAX; i++)
     {
         // before running the handler, you should save the original context
         store_context(&curr_thread->signal_savedContext);
         if(curr_thread->sigcount[i]>0)
         {
+            lock();
             curr_thread->sigcount[i]--;
+            unlock();
             run_signal(tpf, i);
         }
     }
+    lock();
     curr_thread->signal_inProcess = 0;
+    unlock();
 }
 
 void run_signal(trapframe_t *tpf, int signal)

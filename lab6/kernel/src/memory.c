@@ -97,6 +97,7 @@ void init_allocator()
     memory_sendline("\r\n* Startup Allocation *\r\n");
     memory_sendline("buddy system: usable memory region: 0x%x ~ 0x%x\n", BUDDY_MEMORY_BASE, BUDDY_MEMORY_BASE + BUDDY_MEMORY_PAGE_COUNT * PAGESIZE);
     dtb_find_and_store_reserved_memory(); // find spin tables in dtb
+    memory_reserve(PHYS_TO_VIRT(0x1000), PHYS_TO_VIRT(0x5000)); // // PGD's page frame at 0x1000 // PUD's page frame at 0x2000 PMD 0x3000-0x5000
     memory_reserve((unsigned long long)&_start, (unsigned long long)&_end); // kernel
     memory_reserve((unsigned long long)&_heap_top, (unsigned long long)&_stack_top);  // heap & stack -> simple allocator
     memory_reserve((unsigned long long)CPIO_DEFAULT_START, (unsigned long long)CPIO_DEFAULT_END); //Initramfs
@@ -319,6 +320,7 @@ void cache_free(void *ptr)
 
 void *kmalloc(unsigned int size)
 {
+    lock();
     memory_sendline("\n\n");
     memory_sendline("================================\r\n");
     memory_sendline("[+] Request kmalloc size: %d\r\n", size);
@@ -327,14 +329,17 @@ void *kmalloc(unsigned int size)
     if (size > (32 << CACHE_INDEX_FINAL))
     {
         void *r = page_malloc(size);
+        unlock();
         return r;
     }
     void *r = cache_malloc(size);
+    unlock();
     return r;
 }
 
 void kfree(void *ptr)
 {
+    lock();
     memory_sendline("\n\n");
     memory_sendline("==========================\r\n");
     memory_sendline("[+] Request kfree 0x%x\r\n", ptr);
@@ -344,9 +349,11 @@ void kfree(void *ptr)
     if ((unsigned long long)ptr % PAGESIZE == 0 && frame_array[((unsigned long long)ptr - BUDDY_MEMORY_BASE) >> 12].cache_order == CACHE_STATUS_NONE)
     {
         page_free(ptr);
+        unlock();
         return;
     }
     cache_free(ptr);
+    unlock();
 }
 
 void memory_reserve(unsigned long long start, unsigned long long end)

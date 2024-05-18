@@ -4,8 +4,8 @@
 #include "u_list.h"
 
 #define PIDMAX 32768 // RPi3B pid_max: default: 32768 minimum: 301
-#define USTACK_SIZE 0x10000 // User stack size
-#define KSTACK_SIZE 0x10000 // Kernel stack size
+#define USTACK_SIZE 0x4000 // User stack size
+#define KSTACK_SIZE 0x4000 // Kernel stack size
 #define SIGNAL_MAX  64 // number of sugnal can be use
 
 extern void  switch_to(void *curr_context, void *next_context);
@@ -33,6 +33,7 @@ typedef struct thread_context
     unsigned long fp; // base pointer for local variable in stack
     unsigned long lr; // store return address
     unsigned long sp; // stack pointer, varys from function calls
+    void* ttbr0_el1;
 } thread_context_t;
 
 /* https://zhuanlan.zhihu.com/p/473736908 */
@@ -60,7 +61,7 @@ void idle();
 void schedule();
 void kill_zombies();
 void thread_exit();
-thread_t *thread_create(void *start);
+thread_t *thread_create(void *start, unsigned int filesize);
 int exec_thread(char *data, unsigned int filesize);
 
 void foo();

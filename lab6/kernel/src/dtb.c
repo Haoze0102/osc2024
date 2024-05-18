@@ -142,7 +142,7 @@ void dtb_find_and_store_reserved_memory()
     // 開始把dtb裡面有存的地址reserve起來
     while (reverse_entry->address != 0 || reverse_entry->size != 0)
     {
-        nsigned long long start = PHYS_TO_VIRT(uint64_endian_big2lttle(reverse_entry->address));
+        unsigned long long start = PHYS_TO_VIRT(uint64_endian_big2lttle(reverse_entry->address));
         unsigned long long end   = uint64_endian_big2lttle(reverse_entry->size) + start;
         memory_reserve(start, end);
         reverse_entry++;

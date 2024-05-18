@@ -8,6 +8,7 @@
 #include "mbox.h"
 #include "signal.h"
 
+#include "mmu.h"
 #include "cpio.h"
 #include "dtb.h"
 
@@ -47,8 +48,14 @@ size_t uartwrite(trapframe_t *tpf, const char buf[], size_t size)
 //In this lab, you won’t have to deal with argument passing
 int exec(trapframe_t *tpf, const char *name, char *const argv[])
 {
-    curr_thread->datasize = get_file_size((char*)name);
+    kfree(curr_thread->data);
+    curr_thread->datasize = get_file_size((char *)name);
     char *new_data = get_file_start((char *)name);
+    curr_thread->data = kmalloc(curr_thread->datasize);
+
+    //remap code
+    mappages(PHYS_TO_VIRT(curr_thread->context.ttbr0_el1), 0x0, curr_thread->datasize, (size_t)VIRT_TO_PHYS(curr_thread->data));
+
     for (unsigned int i = 0; i < curr_thread->datasize;i++)
     {
         curr_thread->data[i] = new_data[i];
@@ -60,16 +67,18 @@ int exec(trapframe_t *tpf, const char *name, char *const argv[])
         curr_thread->signal_handler[i] = signal_default_handler;
     }
 
-    tpf->elr_el1 = (unsigned long) curr_thread->data;
-    tpf->sp_el0 = (unsigned long)curr_thread->stack_alloced_ptr + USTACK_SIZE;
+    // map user’s code at 0x0
+    tpf->elr_el1 = 0;
+    // map user’s stack regions at 0xffffffffb000 ~ 0xfffffffff000(4 pages).
+    tpf->sp_el0 = 0xfffffffff000;
     tpf->x0 = 0;
     return 0;
 }
 
 int fork(trapframe_t *tpf)
 {
-    thread_t *newt = thread_create(curr_thread->data);
-    newt->datasize = curr_thread->datasize;
+    lock();
+    thread_t *newt = thread_create(curr_thread->data, curr_thread->datasize);
 
     //copy signal handler
     //You should copy the user-registered handler when program calls fork
@@ -78,9 +87,21 @@ int fork(trapframe_t *tpf)
         newt->signal_handler[i] = curr_thread->signal_handler[i];
     }
 
+    mappages(newt->context.ttbr0_el1, 0x3C000000L, 0x3000000L, 0x3C000000L);
+    mappages(newt->context.ttbr0_el1, 0x3F000000L, 0x1000000L, 0x3F000000L);
+    mappages(newt->context.ttbr0_el1, 0x40000000L, 0x40000000L, 0x40000000L);
+
+    // remap code and stack
+    mappages(newt->context.ttbr0_el1, 0xffffffffb000, 0x4000, (size_t)VIRT_TO_PHYS(newt->stack_alloced_ptr));
+    mappages(newt->context.ttbr0_el1, 0x0, newt->datasize, (size_t)VIRT_TO_PHYS(newt->data));
 
     int parent_pid = curr_thread->pid;
-    thread_t *parent_thread = curr_thread;
+    
+    //copy data into new process
+    for (int i = 0; i < newt->datasize; i++)
+    {
+        newt->data[i] = curr_thread->data[i];
+    }
 
     //copy user stack into new process
     for (int i = 0; i < USTACK_SIZE; i++)
@@ -102,19 +123,19 @@ int fork(trapframe_t *tpf)
         goto child;
     }
 
+    // 父子content共用 但其中的temp_ttbr0_el1不共用 
+    void *temp_ttbr0_el1 = newt->context.ttbr0_el1;
     newt->context = curr_thread->context;
-    // the offset of current(parent) syscall should also be updated to new cpu context from parent offset
-    newt->context.fp += newt->kernel_stack_alloced_ptr - curr_thread->kernel_stack_alloced_ptr;
-    newt->context.sp += newt->kernel_stack_alloced_ptr - curr_thread->kernel_stack_alloced_ptr;
+    newt->context.ttbr0_el1 = VIRT_TO_PHYS(temp_ttbr0_el1);
+    // the offset of current syscall should also be updated to new cpu context
+    newt->context.fp += newt->kernel_stack_alloced_ptr - curr_thread->kernel_stack_alloced_ptr; // move fp
+    newt->context.sp += newt->kernel_stack_alloced_ptr - curr_thread->kernel_stack_alloced_ptr; // move kernel sp
 
+    unlock();
     tpf->x0 = newt->pid;
     return newt->pid;   // pid = new
 
 child:
-    // the offset of current syscall should also be updated to new return point
-    // move child->tpf to correct address
-    tpf = (trapframe_t*)((char *)tpf + (unsigned long)newt->kernel_stack_alloced_ptr - (unsigned long)parent_thread->kernel_stack_alloced_ptr); // move tpf
-    tpf->sp_el0 += newt->stack_alloced_ptr - parent_thread->stack_alloced_ptr;
     tpf->x0 = 0;
     return 0;           // pid = 0
 }
@@ -124,35 +145,26 @@ void exit(trapframe_t *tpf, int status)
     thread_exit();
 }
 
-int syscall_mbox_call(trapframe_t *tpf, unsigned char ch, unsigned int *mbox)
+int syscall_mbox_call(trapframe_t *tpf, unsigned char ch, unsigned int *mbox_user)
 {
-    unsigned long r = (((unsigned long)((unsigned long)mbox) & ~0xF) | (ch & 0xF));
-    /* wait until we can write to the mailbox */
-    do{asm volatile("nop");} while (*MBOX_STATUS & BCM_ARM_VC_MS_FULL);
-    /* write the address of our message to the mailbox with channel identifier */
-    *MBOX_WRITE = r;
-    /* now wait for the response */
-    while (1)
-    {
-        /* is there a response? */
-        do{ asm volatile("nop");} while (*MBOX_STATUS & BCM_ARM_VC_MS_EMPTY);
-        /* is it a response to our message? */
-        if (r == *MBOX_READ)
-        {
-            /* is it a valid successful response? */
-            tpf->x0 = (mbox[1] == MBOX_REQUEST_SUCCEED);
-            return mbox[1] == MBOX_REQUEST_SUCCEED;
-        }
-    }
+    lock();
+    unsigned int size_of_mbox = mbox_user[0];
+    memcpy((char *)pt, mbox_user, size_of_mbox);
+    mbox_call(MBOX_TAGS_ARM_TO_VC, (unsigned int)((unsigned long)&pt));
+    memcpy(mbox_user, (char *)pt, size_of_mbox);
 
-    tpf->x0 = 0;
+    tpf->x0 = 8;
+
+    unlock();
     return 0;
 }
 
 void kill(trapframe_t *tpf, int pid)
 {
     if ( pid < 0 || pid >= PIDMAX || !threads[pid].isused) return;
+    lock();
     threads[pid].iszombie = 1;
+    unlock();
     // select next thread
     schedule();
 }
@@ -168,7 +180,9 @@ void signal_register(int signal, void (*handler)())
 void signal_kill(int pid, int signal)
 {
     if (pid > PIDMAX || pid < 0 || !threads[pid].isused)return;
+    lock();
     threads[pid].sigcount[signal]++;
+    unlock();
 }
 
 void sigreturn(trapframe_t *tpf)
