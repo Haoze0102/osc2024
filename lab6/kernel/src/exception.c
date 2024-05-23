@@ -47,6 +47,7 @@ void irq_router(trapframe_t* tpf)
 
         if (run_queue->next->next != run_queue) schedule();
     }
+    // in user mode
     if ((tpf->spsr_el1 & 0b1100) == 0) { check_signal(tpf); }
 }
 

@@ -41,7 +41,9 @@ size_t uartwrite(trapframe_t *tpf,const char buf[], size_t size)
 //In this lab, you won’t have to deal with argument passing
 int exec(trapframe_t *tpf,const char *name, char *const argv[])
 {
+    uart_sendline("syscall exec\n");
     kfree(curr_thread->data);
+    //kfree(curr_thread->context.pgd);
     curr_thread->datasize = get_file_size((char *)name);
     char *new_data = get_file_start((char *)name);
     curr_thread->data = kmalloc(curr_thread->datasize);
@@ -59,12 +61,15 @@ int exec(trapframe_t *tpf,const char *name, char *const argv[])
 
     tpf->elr_el1 = USER_KERNEL_BASE;
     tpf->sp_el0 = USER_STACK_BASE;
+    //uart_sendline("%x\n", USER_KERNEL_BASE);
+    //uart_sendline("%x\n", USER_STACK_BASE);
     tpf->x0 = 0;
     return 0;
 }
 
 int fork(trapframe_t *tpf)
 {
+    uart_sendline("syscall fork\n");
     lock();
     thread_t *newt = thread_create(curr_thread->data,curr_thread->datasize);
 
@@ -75,7 +80,10 @@ int fork(trapframe_t *tpf)
     }
 
     // remap
-    mappages(newt->context.pgd, USER_KERNEL_BASE, newt->datasize, (size_t)VIRT_TO_PHYS(newt->data), 0);
+    // 1. kernel space
+    // 2. user stack
+    // 3. PERIPHERAL
+    mappages(newt->context.pgd, USER_KERNEL_BASE+1, newt->datasize, (size_t)VIRT_TO_PHYS(newt->data), 0);
     mappages(newt->context.pgd, USER_STACK_BASE - USTACK_SIZE, USTACK_SIZE, (size_t)VIRT_TO_PHYS(newt->stack_alloced_ptr), 0);
     mappages(newt->context.pgd, PERIPHERAL_START, PERIPHERAL_END - PERIPHERAL_START, PERIPHERAL_START, 0);
 
@@ -109,6 +117,7 @@ int fork(trapframe_t *tpf)
         goto child;
     }
 
+    // parent和parent使用同樣的conetent，但不包含PGD
     void *temp_pgd = newt->context.pgd;
     newt->context = curr_thread->context;
     newt->context.pgd = VIRT_TO_PHYS(temp_pgd);
@@ -132,10 +141,17 @@ void exit(trapframe_t *tpf, int status)
 
 int syscall_mbox_call(trapframe_t *tpf, unsigned char ch, unsigned int *mbox_user)
 {
+    uart_sendline("syscall mbox\n");
+    
     lock();
 
     unsigned int size_of_mbox = mbox_user[0];
     memcpy((char *)pt, mbox_user, size_of_mbox);
+    // uart_sendline("mbox_user:%x\n", &mbox_user);
+    // uart_sendline("%x\n", &pt);
+    // uart_sendline("%d\n", pt);
+    // uart_sendline("%x\n", &pt[1]);
+    
     mbox_call(MBOX_TAGS_ARM_TO_VC, (unsigned int)((unsigned long)&pt));
     memcpy(mbox_user, (char *)pt, size_of_mbox);
 
@@ -146,6 +162,7 @@ int syscall_mbox_call(trapframe_t *tpf, unsigned char ch, unsigned int *mbox_use
 
 void kill(trapframe_t *tpf,int pid)
 {
+    uart_sendline("kill\n");
     lock();
     if (pid >= PIDMAX || pid < 0  || !threads[pid].isused)
     {
@@ -160,7 +177,7 @@ void kill(trapframe_t *tpf,int pid)
 void signal_register(int signal, void (*handler)())
 {
     if (signal > SIGNAL_MAX || signal < 0)return;
-
+    uart_sendline("syscall regisrer\n");
     curr_thread->signal_handler[signal] = handler;
 }
 

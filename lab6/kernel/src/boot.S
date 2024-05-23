@@ -54,10 +54,8 @@ set_exception_vector_table:
 
 setup_stack:
     // set top of stack at 0xffff00003c000000 (last usable memory)
-    movz x3, 0x0000
-    movk x3, 0x3c00, lsl 16
-    movk x3, 0xffff, lsl 48
-    mov  sp, x3
+    ldr x3, =_stack_top
+    mov sp, x3
 
 setup_bss:
     ldr     x1, =__bss_start

@@ -77,8 +77,11 @@ int thread_exec(char *data, unsigned int filesize)
 {
     thread_t *t = thread_create(data, filesize);
 
+    // map kernel space
     mappages(t->context.pgd, USER_KERNEL_BASE, t->datasize, (size_t)VIRT_TO_PHYS(t->data), 0);
+    // map user stack
     mappages(t->context.pgd, USER_STACK_BASE - USTACK_SIZE, USTACK_SIZE, (size_t)VIRT_TO_PHYS(t->stack_alloced_ptr), 0);
+    // map PERIPHERAL space
     mappages(t->context.pgd, PERIPHERAL_START, PERIPHERAL_END - PERIPHERAL_START, PERIPHERAL_START, 0);
 
     // Additional Block for Read-Only block -> User space signal handler cannot be killed
@@ -105,7 +108,7 @@ int thread_exec(char *data, unsigned int filesize)
         "msr sp_el0, %2\n\t"    // When el0 -> el1, store return address for el1 -> el0
         "mov sp, %3\n\t"        // sp is reference for the same el process. For example, el2 cannot use sp_el2, it has to use sp to find its own stack.
         "dsb ish\n\t"        // ensure write has completed
-        "msr ttbr0_el1, %4\n\t"
+        "msr ttbr0_el1, %4\n\t" // impoertant, hold process's PGD
         "tlbi vmalle1is\n\t" // invalidate all TLB entries
         "dsb ish\n\t"        // ensure completion of TLB invalidatation
         "isb\n\t"            // clear pipeline"
@@ -140,6 +143,7 @@ thread_t *thread_create(void *start, unsigned int filesize)
     r->context.sp = (unsigned long long)r->kernel_stack_alloced_ptr + KSTACK_SIZE;
     r->context.fp = r->context.sp;
 
+    // create process's PGD
     r->context.pgd = kmalloc(0x1000);
     memset(r->context.pgd, 0, 0x1000);
 
