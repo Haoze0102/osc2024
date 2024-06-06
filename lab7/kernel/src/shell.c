@@ -9,8 +9,9 @@
 #include "memory.h"
 #include "timer.h"
 #include "sched.h"
+#include "vfs.h"
 
-#define CLI_MAX_CMD 9
+#define CLI_MAX_CMD 11
 
 extern int   uart_recv_echo_flag;
 extern char* dtb_ptr;
@@ -26,6 +27,8 @@ struct CLI_CMDS cmd_list[CLI_MAX_CMD]=
     {.command="info", .help="get device information via mailbox"},
     {.command="ls", .help="list directory contents"},
     {.command="setTimeout", .help="setTimeout [MESSAGE] [SECONDS]"},
+    {.command="vfs", .help="test vfs"},
+    {.command="initramfs", .help="test initramfs"},
     {.command="reboot", .help="reboot the device"}
 };
 
@@ -81,6 +84,10 @@ void cli_cmd_exec(char* buffer)
     } else if (strcmp(cmd, "setTimeout") == 0) {
         char* sec = str_SepbySpace(argvs);
         do_cmd_setTimeout(argvs, sec);
+    } else if (strcmp(cmd, "vfs") == 0) {
+        do_cmd_vfs();
+    } else if (strcmp(cmd, "initramfs") == 0) {
+        do_cmd_initramfs();
     } else if (strcmp(cmd, "reboot") == 0) {
         do_cmd_reboot();
     }
@@ -218,6 +225,16 @@ void do_cmd_setTimeout(char* msg, char* sec)
     add_timer(uart_sendline,atoi(sec),msg,0);
 }
 
+void do_cmd_vfs()
+{
+    vfs_test();
+}
+
+void do_cmd_initramfs()
+{
+    initramfs_test();
+}
+
 void do_cmd_reboot()
 {
     uart_puts("Reboot in 5 seconds ...\r\n\r\n");
@@ -226,4 +243,3 @@ void do_cmd_reboot()
     volatile unsigned int* wdg_addr = (unsigned int*)PM_WDOG;
     *wdg_addr = PM_PASSWORD | 5;
 }
-

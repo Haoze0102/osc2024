@@ -3,6 +3,7 @@
 #include "memory.h"
 #include "string.h"
 #include "uart1.h"
+#include "initramfs.h"
 
 struct mount *rootfs;
 struct filesystem reg_fs[MAX_FS_REG];
@@ -15,7 +16,7 @@ int register_filesystem(struct filesystem *fs)
         if(!reg_fs[i].name)
         {
             reg_fs[i].name = fs->name;
-            reg_fs->setup_mount = fs->setup_mount;
+            reg_fs[i].setup_mount = fs->setup_mount;
             return i;
         }
     }
@@ -214,7 +215,9 @@ void init_rootfs()
     rootfs = kmalloc(sizeof(struct mount)); // malloc rootfs's mount structure
     reg_fs[idx].setup_mount(&reg_fs[idx], rootfs); // mount tmpfs on rootfs
 
-    vfs_test();
+    vfs_mkdir("/initramfs");
+    register_initramfs();
+    vfs_mount("/initramfs","initramfs");
 }
 
 void vfs_test()
@@ -226,11 +229,74 @@ void vfs_test()
     vfs_mount("/lll/ddd", "tmpfs");
     struct file* testfilew;
     struct file *testfiler;
-    char testbufw[0x30] = "ABCDEABBBBBBDDDDDDDDDDD";
-    char testbufr[0x30] = {};
+    char testbufw[0x50] = "Guava is a common tropical fruit.";
+    char testbufr[0x50] = {};
     vfs_open("/lll/ddd/ggg", O_CREAT, &testfilew);
     vfs_open("/lll/ddd/ggg", O_CREAT, &testfiler);
     vfs_write(testfilew, testbufw, 10);
     vfs_read(testfiler, testbufr, 10);
-    uart_sendline("%s",testbufr);
+    uart_sendline("%s\n",testbufr);
+}
+
+void initramfs_test()
+{
+    char testbufw[0x50] = "Guava is a common tropical fruit.";
+    char testbufr[0x50] = {};
+
+    struct file *testfile_initramfs;
+    vfs_open("/initramfs/file0.txt", O_CREAT, &testfile_initramfs);
+    vfs_write(testfile_initramfs, testbufw, 20);
+    vfs_read(testfile_initramfs, testbufr, 20);
+    uart_sendline("%s\n", testbufr);
+}
+
+char *get_absolute_path(char *path, char *curr_working_dir)
+{
+    //relative path
+    /*
+    path = docs/file.txt
+    curr_working_dir = /home/user
+    path = /home/user/docs/file.txt
+    */
+    if(path[0] != '/')
+    {
+        char tmp[MAX_PATH_NAME];
+        strcpy(tmp, curr_working_dir);
+        if(strcmp(curr_working_dir,"/")!=0)strcat(tmp, "/");
+        strcat(tmp, path);
+        strcpy(path, tmp);
+    }
+
+    // deal with '.', '..'
+    char absolute_path[MAX_PATH_NAME+1] = {};
+    int idx = 0;
+    for (int i = 0; i < strlen(path); i++)
+    {
+        // meet /..
+        if (path[i] == '/' && path[i+1] == '.' && path[i+2] == '.')
+        {
+            for (int j = idx; j >= 0;j--)
+            {
+                if(absolute_path[j] == '/')
+                {
+                    absolute_path[j] = 0;
+                    idx = j;
+                }
+            }
+            i += 2;
+            continue;
+        }
+
+        // ignore /.
+        if (path[i] == '/' && path[i+1] == '.')
+        {
+            i++;
+            continue;
+        }
+
+        absolute_path[idx++] = path[i];
+    }
+    absolute_path[idx] = 0;
+
+    return strcpy(path, absolute_path);
 }
