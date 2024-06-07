@@ -4,9 +4,11 @@
 #include "string.h"
 #include "uart1.h"
 #include "initramfs.h"
+#include "dev_uart.h"
 
 struct mount *rootfs;
 struct filesystem reg_fs[MAX_FS_REG];
+struct file_operations reg_dev[MAX_DEV_REG];
 
 // register the file system to the kernel.
 int register_filesystem(struct filesystem *fs)
@@ -17,6 +19,19 @@ int register_filesystem(struct filesystem *fs)
         {
             reg_fs[i].name = fs->name;
             reg_fs[i].setup_mount = fs->setup_mount;
+            return i;
+        }
+    }
+    return -1;
+}
+
+int register_dev(struct file_operations *fo)
+{
+    for (int i = 0; i < MAX_FS_REG; i++)
+    {
+        if (!reg_dev[i].open)
+        {
+            reg_dev[i] = *fo;
             return i;
         }
     }
@@ -209,6 +224,16 @@ int vfs_lookup(const char *pathname, struct vnode **target)
     return 0;
 }
 
+int vfs_mknod(char* pathname, int id)
+{
+    struct file* f = kmalloc(sizeof(struct file));
+    //create file
+    vfs_open(pathname, O_CREAT, &f);
+    f->vnode->f_ops = &reg_dev[id];
+    vfs_close(f);
+    return 0;
+}
+
 void init_rootfs()
 {
     int idx = register_tmpfs(); // register tmpfs filesystem
@@ -218,6 +243,14 @@ void init_rootfs()
     vfs_mkdir("/initramfs");
     register_initramfs();
     vfs_mount("/initramfs","initramfs");
+
+    // for dev
+    vfs_mkdir("/dev");
+    int uart_id = init_dev_uart();
+    vfs_mknod("/dev/uart", uart_id);
+    
+    vfs_test();
+
 }
 
 void vfs_test()
@@ -236,6 +269,12 @@ void vfs_test()
     vfs_write(testfilew, testbufw, 10);
     vfs_read(testfiler, testbufr, 10);
     uart_sendline("%s\n",testbufr);
+
+    struct file *testfile_initramfs;
+    vfs_open("/initramfs/file0.txt", O_CREAT, &testfile_initramfs);
+    vfs_write(testfile_initramfs, testbufw, 20);
+    vfs_read(testfile_initramfs, testbufr, 20);
+    uart_sendline("%s\n", testbufr);
 }
 
 void initramfs_test()
