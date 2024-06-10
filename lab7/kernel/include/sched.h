@@ -50,7 +50,7 @@ typedef struct thread
     thread_context_t signal_saved_context;
     list_head_t      vma_list;
     char             curr_working_dir[MAX_PATH_NAME+1]; // Lab7 Basic Exercise 3
-    struct file*     file_descriptors_table[MAX_FD];    // Lab7 Basic Exercise 3 
+    struct file*     file_descriptors_table[MAX_FD+1];    // Lab7 Basic Exercise 3 
 } thread_t;
 
 extern thread_t    *curr_thread;

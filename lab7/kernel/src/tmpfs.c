@@ -19,7 +19,7 @@ int register_tmpfs()
 int tmpfs_setup_mount(struct filesystem *fs, struct mount *_mount)
 {
     _mount->fs = fs; // set to tmpfs
-    _mount->root = tmpfs_create_vnode(_mount,dir_t);// create a vnode for tmpfs(rootfs)
+    _mount->root = tmpfs_create_vnode(0,dir_t);// create a vnode for tmpfs(rootfs)
     return 0;
 }
 
